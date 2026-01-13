@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Casino Cam-pu-chia =))</title>
+    <style>
+        body { background: #1b262c; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; overflow-x: hidden;}
+        
+        .screen { display: none; min-height: 100vh; padding: 20px; box-sizing: border-box; }
+        .active { display: block; }
+
+        button { padding: 12px 20px; margin: 5px; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; color: white; transition: 0.2s; }
+        button:hover { transform: scale(1.05); }
+        .btn-main { background: #0f4c75; width: 200px; font-size: 18px; margin-bottom: 10px; }
+        .btn-green { background: #27ae60; }
+        .btn-red { background: #c0392b; }
+        .btn-yellow { background: #f1c40f; color: black; }
+
+        .card { 
+            display: inline-flex; justify-content: center; align-items: center;
+            width: 50px; height: 75px; background: white; color: black; 
+            border-radius: 5px; margin: 2px; font-weight: bold; position: relative;
+            box-shadow: 1px 1px 3px rgba(0,0,0,0.5); font-size: 16px;
+        }
+        .card.red { color: #e74c3c; }
+        .card-back { background: #34495e; border: 2px solid white; color: transparent; }
+        .hidden-card { background: #a93226; color: #a93226; border: 2px solid white; background-image: repeating-linear-gradient(45deg, #a93226 0, #a93226 5px, #922b21 5px, #922b21 10px);}
+
+        .home-grid { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; margin-top: 50px;}
+        .game-card { background: #3282b8; padding: 20px; border-radius: 10px; width: 250px; }
+        
+        #room-list { margin-top: 20px; }
+        .room-item { background: #0f4c75; padding: 10px; margin: 5px auto; width: 300px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;}
+        .room-item:hover { background: #3282b8; }
+
+        /* TLMN */
+        #tlmn-table {
+            position: relative; width: 800px; height: 600px; 
+            background: #206a5d; border-radius: 200px; border: 10px solid #1b262c;
+            margin: 0 auto; margin-top: 20px;
+        }
+        .seat { position: absolute; width: 120px; text-align: center; }
+        .seat-0 { bottom: 20px; left: 50%; transform: translateX(-50%); } 
+        .seat-1 { right: 20px; top: 50%; transform: translateY(-50%); }   
+        .seat-2 { top: 20px; left: 50%; transform: translateX(-50%); }    
+        .seat-3 { left: 20px; top: 50%; transform: translateY(-50%); }    
+        .avatar { width: 60px; height: 60px; background: #bbb; border-radius: 50%; margin: 0 auto; line-height: 60px; color: #333; font-weight: bold; border: 3px solid transparent;}
+        .active-turn .avatar { border-color: yellow; box-shadow: 0 0 15px yellow; transform: scale(1.1); transition: 0.3s;}
+        #table-center { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            width: 300px; height: 150px; display: flex; justify-content: center; align-items: center;
+        }
+        .card-checkbox { display: none; }
+        .card-checkbox:checked + .card { transform: translateY(-15px); border: 2px solid gold; }
+
+        /* BLACKJACK */
+        .bj-area { margin-top: 30px; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 10px; display: inline-block; min-width: 300px;}
+
+        /* --- POPUP CHIẾN THẮNG --- */
+        #winner-overlay {
+            display: none; /* Ẩn mặc định */
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 9999;
+            justify-content: center; align-items: center;
+            animation: fadeIn 0.3s;
+        }
+        .winner-box {
+            background: linear-gradient(135deg, #f1c40f, #e67e22);
+            padding: 40px; border-radius: 20px;
+            box-shadow: 0 0 50px rgba(255, 215, 0, 0.8);
+            text-align: center; color: white;
+            border: 5px solid #fff;
+            transform: scale(0.8); animation: popIn 0.5s forwards;
+        }
+        .winner-title { font-size: 32px; font-weight: bold; margin-bottom: 10px; text-transform: uppercase;}
+        .winner-name { font-size: 48px; font-weight: bold; text-shadow: 2px 2px 0 #000; margin: 20px 0;}
+        .winner-badge {
+            position: absolute;
+            top: -40px; left: 50%; transform: translateX(-50%);
+            background: linear-gradient(45deg, #f1c40f, #e67e22);
+            color: white; padding: 5px 15px; border-radius: 20px;
+            font-weight: bold; font-size: 14px;
+            box-shadow: 0 0 10px #f1c40f;
+            border: 2px solid white;
+            white-space: nowrap;
+            z-index: 10;
+            animation: bounce 1s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-5px); }
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes popIn { to { transform: scale(1); } }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.0/socket.io.min.js"></script>
+</head>
+<body>
+
+    <div id="winner-overlay">
+        <div class="winner-box">
+            <div class="winner-title">🏆 NGƯỜI CHIẾN THẮNG 🏆</div>
+            <div id="winner-name-display" class="winner-name">Tên người thắng</div>
+            <div id="winner-message">Chúc mừng! Bạn đã chơi rất hay.</div>
+            <br>
+            <button class="btn-green" style="font-size: 20px; padding: 15px 30px;" onclick="closeWinnerPopup()">Đóng & Chơi Tiếp</button>
+        </div>
+    </div>
+
+    <div id="home-screen" class="screen active">
+        <h1>😝😝♠️ CASINO Cam-pu-chia ♣️😏</h1>
+        <input type="text" id="username" placeholder="Nhập tên bạn" value="Player 1" style="padding: 10px;">
+        
+        <div class="home-grid">
+            <div class="game-card">
+                <h2>Xì Dách</h2>
+                <p>Chỉ đánh với máy</p>
+                <button class="btn-main" onclick="startBlackjack()">Chơi Ngay</button>
+            </div>
+
+            <div class="game-card">
+                <h2>Tiến Lên MN</h2>
+                <p>Bot & Online</p>
+                <button class="btn-main" onclick="showTLMNMenu()">Vào Sảnh</button>
+            </div>
+
+            <div class="game-card" style="opacity: 0.5;">
+                <h2>Poker</h2>
+                <p>(Demo - Chưa có)</p>
+                <button class="btn-main" disabled>Sắp ra mắt</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tlmn-lobby" class="screen">
+        <button onclick="goHome()" style="float:left;">⬅ Quay lại</button>
+        <h2>Sảnh Tiến Lên</h2>
+        
+        <div style="display: flex; justify-content: center; gap: 20px;">
+            <div style="width: 300px; border-right: 1px solid #555; padding-right: 20px;">
+                <h3>Chơi Nhanh</h3>
+                <button class="btn-main btn-green" onclick="createTLMN('bot')">Đánh với Máy</button>
+                <br>
+                <button class="btn-main btn-green" onclick="createTLMN('multi')">Tạo Phòng Online</button>
+                <br>
+                <input type="text" id="room-code-input" placeholder="Mã phòng" style="width: 100px; padding: 8px;">
+                <button onclick="joinByCode()">Vào</button>
+            </div>
+
+            <div style="width: 400px;">
+                <h3>Danh sách phòng online</h3>
+                <div id="room-list">Đang tải...</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="tlmn-game" class="screen">
+        <div style="position: absolute; top: 10px; left: 10px;">
+            <button class="btn-red" onclick="leaveRoom('tlmn')">Rời phòng</button>
+            <span id="rid-display" style="margin-left: 10px; font-weight: bold; color: yellow;"></span>
+        </div>
+        
+        <div id="tlmn-table">
+            <div class="seat seat-0" id="seat-0"></div>
+            <div class="seat seat-1" id="seat-1"></div>
+            <div class="seat seat-2" id="seat-2"></div>
+            <div class="seat seat-3" id="seat-3"></div>
+            <div id="table-center"></div>
+        </div>
+
+        <div id="game-controls" style="margin-top: 10px; display: none;">
+            <button class="btn-green" onclick="tlmnAction('play')">ĐÁNH BÀI</button>
+            <button class="btn-red" onclick="tlmnAction('pass')">BỎ LƯỢT</button>
+        </div>
+        <button id="btn-start" class="btn-green" style="margin-top: 10px; display: none;" onclick="socket.emit('tlmn_start_game')">BẮT ĐẦU</button>
+    </div>
+
+    <div id="blackjack-game" class="screen">
+        <button onclick="leaveRoom('blackjack')" style="float:left;">⬅ Thoát</button>
+        <h1>Xì Dách (Blackjack)</h1>
+
+        <div class="bj-area">
+            <h3>👑 Nhà Cái (Máy)</h3>
+            <div id="bj-dealer-cards"></div>
+            <div id="bj-dealer-score">Điểm: ?</div>
+        </div>
+        <br>
+        <div class="bj-area">
+            <h3>👤 Bạn</h3>
+            <div id="bj-my-cards"></div>
+            <div id="bj-my-score">Điểm: 0</div>
+            
+            <div id="bj-controls" style="display:none; margin-top: 15px;">
+                <button class="btn-yellow" onclick="bjAction('hit')">RÚT BÀI</button>
+                <button class="btn-red" onclick="bjAction('stand')">DẰN (THÔI)</button>
+            </div>
+            
+            <button id="bj-btn-start" class="btn-green" onclick="startBlackjack()" style="display:none; margin-top:15px;">CHIA BÀI LẠI</button>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentScreen = 'home';
+
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            currentScreen = id;
+        }
+        function goHome() { showScreen('home-screen'); }
+        function showTLMNMenu() { showScreen('tlmn-lobby'); }
+        
+        function renderCard(c) {
+            if(!c || c == "??") return `<div class="card hidden-card"></div>`;
+            let rank = c.slice(0, -1);
+            let suit = c.slice(-1);
+            const isRed = (suit === '♥' || suit === '♦');
+            return `<div class="card ${isRed ? 'red' : ''}">${rank}<small>${suit}</small></div>`;
+        }
+
+        function leaveRoom(type) {
+            if(type === 'tlmn') socket.emit('tlmn_action', {act: 'leave'});
+            goHome();
+        }
+
+        function closeWinnerPopup() {
+            document.getElementById('winner-overlay').style.display = 'none';
+        }
+
+        // ==========================
+        //       TIEN LEN LOGIC
+        // ==========================
+        function createTLMN(mode) {
+            const name = document.getElementById('username').value;
+            socket.emit('create_tlmn', {mode: mode, name: name});
+        }
+        function joinByCode() {
+            const code = document.getElementById('room-code-input').value.toUpperCase();
+            const name = document.getElementById('username').value;
+            socket.emit('join_tlmn', {code: code, name: name});
+        }
+        function joinRoom(id) {
+            const name = document.getElementById('username').value;
+            socket.emit('join_tlmn', {code: id, name: name});
+        }
+        function tlmnAction(act) {
+            if (act === 'pass') {
+                socket.emit('tlmn_action', {act: 'pass'});
+            } else {
+                const checked = document.querySelectorAll('.card-checkbox:checked');
+                const cards = Array.from(checked).map(c => c.value);
+                if (cards.length === 0) return alert("Chọn bài đi!");
+                socket.emit('tlmn_action', {act: 'play', cards: cards});
+            }
+        }
+
+        socket.on('room_list_update', (rooms) => {
+            const listDiv = document.getElementById('room-list');
+            if (rooms.length === 0) { listDiv.innerHTML = "<p>Chưa có phòng nào.</p>"; return; }
+            listDiv.innerHTML = rooms.map(r => `
+                <div class="room-item" onclick="joinRoom('${r.id}')">
+                    <span><b>Phòng ${r.id}</b></span>
+                    <span>${r.players} - ${r.host}</span>
+                </div>`).join('');
+        });
+
+        socket.on('room_joined', (data) => {
+            if(data.game_type === 'tienlen') {
+                showScreen('tlmn-game');
+                document.getElementById('rid-display').innerText = "Phòng: " + data.room_id;
+            }
+        });
+
+        socket.on('tlmn_update', (data) => {
+            data.seats.forEach((seat, index) => {
+                const div = document.getElementById(`seat-${index}`);
+                if (!seat) { div.innerHTML = `<div class="avatar" style="opacity:0.3">+</div>`; return; }
+                
+                let cardsHtml = '';
+                if (index === 0) {
+                    cardsHtml = '<div style="display:flex; justify-content:center; width: 400px; flex-wrap:wrap;">' + 
+                        seat.hand.map(c => `<label><input type="checkbox" class="card-checkbox" value="${c}">${renderCard(c)}</label>`).join('') + '</div>';
+                } else {
+                    // Nếu thắng thì không hiện lưng bài nữa (hoặc hiện 0 lá)
+                    if (seat.is_winner) cardsHtml = ''; 
+                    else cardsHtml = `<div class="card card-back">${seat.hand}</div>`; 
+                }
+
+                // --- ĐOẠN MỚI THÊM VÀO ĐÂY ---
+                let winnerHtml = '';
+                if (seat.is_winner) {
+                    winnerHtml = `<div class="winner-badge">👑 CHIẾN THẮNG 👑</div>`;
+                    div.classList.add('active-turn'); // Hiệu ứng sáng đèn avatar
+                } else {
+                    // Nếu không thắng thì check lượt đi như cũ
+                    if (seat.is_turn) div.classList.add('active-turn');
+                    else div.classList.remove('active-turn');
+                }
+                // -----------------------------
+
+                div.className = `seat seat-${index} ${seat.is_turn || seat.is_winner ? 'active-turn' : ''}`;
+                
+                // Chèn winnerHtml vào trước Avatar
+                div.innerHTML = `${winnerHtml}<div class="avatar">${seat.name}</div>${cardsHtml}`;
+            });
+
+            const centerDiv = document.getElementById('table-center');
+            centerDiv.innerHTML = (data.last_move && data.last_move.length > 0) ? data.last_move.map(renderCard).join('') : "";
+
+            const startBtn = document.getElementById('btn-start');
+            if (data.is_host && (data.state === 'WAITING' || data.state === 'FINISHED')) {
+                startBtn.style.display = 'block';
+                startBtn.innerText = (data.state === 'FINISHED') ? "CHƠI LẠI" : "BẮT ĐẦU";
+            } else {
+                startBtn.style.display = 'none';
+            }
+
+            document.getElementById('game-controls').style.display = (data.seats[0] && data.seats[0].is_turn) ? 'block' : 'none';
+        });
+
+        // --- SỰ KIỆN CHIẾN THẮNG ĐẸP MẮT ---
+        socket.on('tlmn_end', (data) => {
+            const winner = data.winner;
+            const myName = document.getElementById('username').value;
+            const overlay = document.getElementById('winner-overlay');
+            const nameDisplay = document.getElementById('winner-name-display');
+            const msgDisplay = document.getElementById('winner-message');
+            
+            // Hiển thị tên người thắng
+            nameDisplay.innerText = winner;
+
+            // Kiểm tra xem mình thắng hay thua để đổi màu sắc/lời nhắn
+            if (winner === myName || winner === "Bạn") {
+                msgDisplay.innerText = "🎉 XUẤT SẮC! BẠN ĐÃ CHIẾN THẮNG 🎉";
+                document.querySelector('.winner-box').style.background = "linear-gradient(135deg, #2ecc71, #27ae60)"; // Màu xanh
+            } else {
+                msgDisplay.innerText = "😢 Chúc bạn may mắn lần sau...";
+                document.querySelector('.winner-box').style.background = "linear-gradient(135deg, #e74c3c, #c0392b)"; // Màu đỏ
+            }
+
+            // Hiện Popup (dùng Flex để căn giữa)
+            overlay.style.display = 'flex';
+        });
+
+        // Blackjack Logic
+        function startBlackjack() {
+            showScreen('blackjack-game');
+            document.getElementById('bj-dealer-cards').innerHTML = "";
+            document.getElementById('bj-my-cards').innerHTML = "";
+            document.getElementById('bj-controls').style.display = 'none';
+            document.getElementById('bj-btn-start').style.display = 'none';
+            socket.emit('start_blackjack_pvc');
+        }
+        function bjAction(act) { socket.emit('action', {act: act}); }
+
+        socket.on('deal_cards', (data) => {
+            document.getElementById('bj-btn-start').style.display = 'none';
+            document.getElementById('bj-my-cards').innerHTML = data.hand.map(renderCard).join('');
+            document.getElementById('bj-my-score').innerText = "Điểm: " + data.score;
+            document.getElementById('bj-dealer-cards').innerHTML = data.dealer_view.map(renderCard).join('');
+            document.getElementById('bj-controls').style.display = 'block';
+        });
+
+        socket.on('update_hand', (data) => {
+            const current = document.getElementById('bj-my-cards').innerHTML;
+            const newCard = data.hand[data.hand.length - 1];
+            document.getElementById('bj-my-cards').innerHTML = current + renderCard(newCard);
+            document.getElementById('bj-my-score').innerText = "Điểm: " + data.score;
+            if(data.score > 21) document.getElementById('bj-controls').style.display = 'none';
+        });
+
+        socket.on('game_over', (data) => {
+            document.getElementById('bj-dealer-cards').innerHTML = data.dealer_hand.map(renderCard).join('');
+            document.getElementById('bj-dealer-score').innerText = "Điểm: " + data.dealer_score;
+            document.getElementById('bj-controls').style.display = 'none';
+            document.getElementById('bj-btn-start').style.display = 'inline-block';
+            setTimeout(() => alert(`KẾT QUẢ: ${data.result}`), 200);
+        });
+
+        socket.on('force_leave', (data) => { alert(data.msg); goHome(); });
+        socket.on('error', (data) => alert(data.msg));
+    </script>
+</body>
+</html>
