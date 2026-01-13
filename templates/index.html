@@ -9,13 +9,30 @@
         .screen { display: none; min-height: 100vh; padding: 20px; box-sizing: border-box; }
         .active { display: block; }
 
+        /* BUTTONS CHUNG */
         button { padding: 12px 20px; margin: 5px; cursor: pointer; border-radius: 5px; border: none; font-weight: bold; color: white; transition: 0.2s; }
-        button:hover { transform: scale(1.05); }
+        button:hover { transform: scale(1.05); filter: brightness(1.2); }
+        
+        /* CÁC LOẠI NÚT CỤ THỂ */
         .btn-main { background: #0f4c75; width: 200px; font-size: 18px; margin-bottom: 10px; }
         .btn-green { background: #27ae60; }
         .btn-red { background: #c0392b; }
         .btn-yellow { background: #f1c40f; color: black; }
+        
+        /* --- MỚI THÊM: Nút Quay lại (Màu xám/trắng) --- */
+        .btn-back { 
+            background: #95a5a6; /* Màu nền xám */
+            color: #fff;          /* Màu chữ trắng */
+            float: left;          /* Căn trái */
+        }
 
+        /* --- MỚI THÊM: Nút Vào phòng (Màu xanh dương) --- */
+        .btn-join { 
+            background: #2980b9; /* Màu nền xanh dương */
+            color: white;        /* Màu chữ trắng */
+        }
+
+        /* CARD (Lá bài) */
         .card { 
             display: inline-flex; justify-content: center; align-items: center;
             width: 50px; height: 75px; background: white; color: black; 
@@ -26,6 +43,7 @@
         .card-back { background: #34495e; border: 2px solid white; color: transparent; }
         .hidden-card { background: #a93226; color: #a93226; border: 2px solid white; background-image: repeating-linear-gradient(45deg, #a93226 0, #a93226 5px, #922b21 5px, #922b21 10px);}
 
+        /* LAYOUT */
         .home-grid { display: flex; justify-content: center; gap: 30px; flex-wrap: wrap; margin-top: 50px;}
         .game-card { background: #3282b8; padding: 20px; border-radius: 10px; width: 250px; }
         
@@ -33,7 +51,7 @@
         .room-item { background: #0f4c75; padding: 10px; margin: 5px auto; width: 300px; border-radius: 5px; display: flex; justify-content: space-between; align-items: center; cursor: pointer;}
         .room-item:hover { background: #3282b8; }
 
-        /* TLMN */
+        /* TLMN TABLE */
         #tlmn-table {
             position: relative; width: 800px; height: 600px; 
             background: #206a5d; border-radius: 200px; border: 10px solid #1b262c;
@@ -56,10 +74,9 @@
         /* BLACKJACK */
         .bj-area { margin-top: 30px; background: rgba(0,0,0,0.3); padding: 20px; border-radius: 10px; display: inline-block; min-width: 300px;}
 
-        /* --- POPUP CHIẾN THẮNG --- */
+        /* POPUP CHIẾN THẮNG */
         #winner-overlay {
-            display: none; /* Ẩn mặc định */
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); z-index: 9999;
             justify-content: center; align-items: center;
             animation: fadeIn 0.3s;
@@ -122,7 +139,7 @@
             <div class="game-card">
                 <h2>Tiến Lên MN</h2>
                 <p>Bot & Online</p>
-                <button class="btn-main" onclick="showTLMNMenu()">Vào Sảnh</button>
+                <button class="btn-main" onclick="showTLMNMenu()">Vào Game</button>
             </div>
 
             <div class="game-card" style="opacity: 0.5;">
@@ -134,8 +151,8 @@
     </div>
 
     <div id="tlmn-lobby" class="screen">
-        <button onclick="goHome()" style="float:left;">⬅ Quay lại</button>
-        <h2>Sảnh Tiến Lên</h2>
+        <button class="btn-back" onclick="goHome()">⬅ Quay lại</button>
+        <h2>Bài Tiến Lên</h2>
         
         <div style="display: flex; justify-content: center; gap: 20px;">
             <div style="width: 300px; border-right: 1px solid #555; padding-right: 20px;">
@@ -145,7 +162,7 @@
                 <button class="btn-main btn-green" onclick="createTLMN('multi')">Tạo Phòng Online</button>
                 <br>
                 <input type="text" id="room-code-input" placeholder="Mã phòng" style="width: 100px; padding: 8px;">
-                <button onclick="joinByCode()">Vào</button>
+                <button class="btn-join" onclick="joinByCode()">Vào</button>
             </div>
 
             <div style="width: 400px;">
