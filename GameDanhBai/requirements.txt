@@ -1,7 +1,0 @@
-fastapi
-uvicorn
-python-socketio
-jinja2
-python-multipart
-aiofiles
-websockets
