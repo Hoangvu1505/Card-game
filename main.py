@@ -113,7 +113,8 @@ async def create_tlmn(sid, data):
     if err: return await sio.emit('error', {'msg': err}, room=sid)
     
     sid_to_room[sid] = room_id
-    sio.enter_room(sid, room_id)
+    #fix here
+    await sio.enter_room(sid, room_id)
     await sio.emit('room_joined', {'room_id': room_id, 'game_type': 'tienlen'}, room=sid)
     
     if not is_bot: await broadcast_room_list()
@@ -127,7 +128,8 @@ async def join_tlmn(sid, data):
     success, msg = manager.join_room(room_id, sid, name)
     if success:
         sid_to_room[sid] = room_id
-        sio.enter_room(sid, room_id)
+        #fix here
+        await sio.enter_room(sid, room_id)
         await sio.emit('room_joined', {'room_id': room_id, 'game_type': 'tienlen'}, room=sid)
         await broadcast_tlmn_state(manager.rooms[room_id])
         await broadcast_room_list()
@@ -140,10 +142,16 @@ async def tlmn_start_game(sid):
     game = manager.rooms.get(room_id)
     if game and game.host_sid == sid:
         if game.start_game():
+            # 1. Cập nhật giao diện bàn cờ cho người chơi
             await broadcast_tlmn_state(game)
+
+            # --- FIX LỖI ĐƠ BOT Ở ĐÂY ---
+            # 2. Nếu là chế độ chơi với Bot, hãy kích hoạt hàm xử lý Bot ngay lập tức
+            # Để phòng trường hợp Bot là người đi đầu tiên
+            if game.is_bot_mode and game.state == 'PLAYING':
+                await handle_bot_turns(game)
         else:
             await sio.emit('error', {'msg': 'Cần ít nhất 2 người chơi!'}, room=sid)
-
 @sio.event
 async def tlmn_action(sid, data):
     room_id = sid_to_room.get(sid)
@@ -172,6 +180,18 @@ async def tlmn_action(sid, data):
     # Bot đánh
     if game.is_bot_mode and game.state == 'PLAYING':
         await handle_bot_turns(game)
+@sio.event
+async def send_chat(sid, data):
+    room_id = sid_to_room.get(sid)
+    if room_id:
+        # Gửi tin nhắn kèm theo ID người gửi (sid) để client biết ai đang nói
+        await sio.emit('chat_received', {
+            'sender_sid': sid, 
+            'content': data.get('content'), 
+            'type': data.get('type') # 'text' hoặc 'image'
+        }, room=room_id)
+    else:
+        print("   ❌ LỖI: Không tìm thấy phòng của người này (Server mất trí nhớ hoặc chưa join)")
 
 async def handle_bot_turns(game):
     while game.state == 'PLAYING':
@@ -218,6 +238,7 @@ async def broadcast_tlmn_state(game):
                 if seat_data:
                     hand_data = seat_data['hand'] if seat_idx == i else len(seat_data['hand'])
                     info = {
+                        'sid': seat_data['sid'],
                         'name': seat_data['name'],
                         'hand': hand_data,
                         'is_turn': (game.turn_index == seat_idx and game.state == "PLAYING"),
