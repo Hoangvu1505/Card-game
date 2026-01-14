@@ -161,6 +161,54 @@
         .sticker-item { cursor: pointer; transition: 0.2s; padding: 5px; border-radius: 5px; background: rgba(255,255,255,0.1); display: flex; justify-content: center; align-items: center;}
         .sticker-item:hover { background: rgba(255,255,255,0.3); transform: scale(1.1); }
         .sticker-item img { width: 100%; max-height: 50px; object-fit: contain;}
+        /* ĐỊNH VỊ NÚT BẤM TRÊN BÀN */
+        #game-controls, #btn-start {
+            position: absolute;
+            bottom: 80px; /* Cách mép dưới bàn 120px -> Nằm cao hơn bài của bạn */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 50; /* Nổi lên trên cùng */
+            display: flex; gap: 10px; /* Khoảng cách giữa các nút */
+        }
+        
+        /* Chỉnh nút Bắt đầu to đẹp hơn chút */
+        #btn-start {
+            padding: 15px 40px;
+            font-size: 20px;
+            box-shadow: 0 0 10px rgba(0,255,0,0.5);
+            animation: bounce 2s infinite;
+        }
+        /* CSS CARO (Thêm vào phần style) */
+        #caro-board {
+            display: grid;
+            grid-template-columns: repeat(15, 30px); /* 15 cột */
+            grid-template-rows: repeat(15, 30px);    /* 15 dòng */
+            gap: 1px;
+            background: #95a5a6;
+            width: fit-content;
+            margin: 0 auto;
+            border: 5px solid #34495e;
+            padding: 5px;
+        }
+        .cell {
+            width: 30px; height: 30px;
+            background: #fff;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 20px; font-weight: bold; cursor: pointer; color: black;
+        }
+        .cell:hover { background: #ecf0f1; }
+        .cell.x { color: red; }
+        .cell.o { color: blue; }
+        
+        /* Hiệu ứng sáng đèn lượt đi */
+        .active-turn-box { 
+            background: yellow !important; 
+            color: black !important; 
+            box-shadow: 0 0 10px yellow; 
+            transform: scale(1.1); 
+            transition: 0.3s;
+            font-weight: bold;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.0/socket.io.min.js"></script>
 </head>
@@ -195,12 +243,17 @@
             <div class="game-card">
                 <h2>Tiến Lên MN</h2>
                 <p>Bot & Online</p>
-                <button class="btn-main" onclick="showTLMNMenu()">Vào Sảnh</button>
+                <button class="btn-main" onclick="showTLMNMenu()">Chơi ngay</button>
             </div>
             <div class="game-card" style="opacity: 0.5;">
                 <h2>Poker</h2>
                 <p>(Demo - Chưa có)</p>
                 <button class="btn-main" disabled>Sắp ra mắt</button>
+            </div>
+            <div class="game-card" style="background: #e67e22;">
+                <h2>Cờ Caro</h2>
+                <p>X vs O (5 Win)</p>
+                <button class="btn-main" onclick="showCaroMenu()">Chơi ngay</button>
             </div>
         </div>
     </div>
@@ -224,7 +277,50 @@
             </div>
         </div>
     </div>
+    
+    <div id="caro-lobby" class="screen">
+        <button class="btn-back" onclick="goHome()">⬅ Quay lại</button>
+        <h2 style="color: #e67e22;">Cờ Caro</h2>
+        
+        <div style="display: flex; justify-content: center; gap: 20px;">
+            <div style="width: 300px; border-right: 1px solid #555; padding-right: 20px;">
+                <h3>Chơi Nhanh</h3>
+                <button class="btn-main btn-green" onclick="createCaro('bot')">Đấu với Máy</button>
+                <br>
+                <button class="btn-main btn-green" onclick="createCaro('multi')">Tạo Phòng Online</button>
+                <br>
+                <div style="margin-top: 10px;">
+                    <input type="text" id="caro-code-input" placeholder="Mã phòng" style="padding: 10px; width: 120px; border-radius: 5px; border: none;">
+                    <button class="btn-join" onclick="joinCaroByInput()">Vào</button>
+                </div>
+            </div>
 
+            <div style="width: 400px;">
+                <h3>Danh sách phòng</h3>
+                <div id="caro-room-list">
+                    <p style="opacity: 0.7;">(Chức năng danh sách đang cập nhật...)</p>
+                    <p>Hãy dùng "Mã phòng" để mời bạn bè.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="caro-game" class="screen">
+        <button class="btn-back" onclick="leaveRoom('caro')">⬅ Thoát</button>
+        <h2 id="caro-status" style="margin-top: 0;">Cờ Caro - Phòng: <span id="caro-rid"></span></h2>
+        
+        <div id="caro-board"></div>
+        
+        <div style="margin-top: 20px;">
+            <div id="player-x" style="display:inline-block; padding: 10px; border: 2px solid white; border-radius: 10px; width: 100px;">X: Chờ...</div>
+            <div id="player-o" style="display:inline-block; padding: 10px; border: 2px solid white; border-radius: 10px; margin-left: 20px; width: 100px;">O: Chờ...</div>
+        </div>
+        <div id="caro-controls" style="text-align: center; margin-top: 20px; display: none;">
+            <button class="btn-green" style="font-size: 18px; padding: 10px 30px;" onclick="socket.emit('caro_restart')">🔄 VÁN MỚI</button>
+        </div>
+
+    </div>
+    </div>
     <div id="tlmn-game" class="screen">
         
         <div style="position: absolute; top: 10px; left: 10px;">
@@ -262,7 +358,7 @@
             <div id="table-center"></div>
         </div>
 
-        <div id="game-controls" style="margin-top: 10px; display: none;">
+        <div id="game-controls" style=" display: none;">
             <button class="btn-green" onclick="tlmnAction('play')">ĐÁNH BÀI</button>
             <button class="btn-red" onclick="tlmnAction('pass')">BỎ LƯỢT</button>
         </div>
@@ -312,6 +408,9 @@
 
         function leaveRoom(type) {
             if(type === 'tlmn') socket.emit('tlmn_action', {act: 'leave'});
+            else if (type === 'caro') {
+                socket.emit('caro_leave'); 
+            }
             goHome();
         }
 
@@ -343,14 +442,33 @@
             }
         }
 
+        // --- 1. XỬ LÝ DANH SÁCH PHÒNG (NÂNG CẤP) ---
         socket.on('room_list_update', (rooms) => {
-            const listDiv = document.getElementById('room-list');
-            if (rooms.length === 0) { listDiv.innerHTML = "<p>Chưa có phòng nào.</p>"; return; }
-            listDiv.innerHTML = rooms.map(r => `
-                <div class="room-item" onclick="joinRoom('${r.id}')">
-                    <span><b>Phòng ${r.id}</b></span>
-                    <span>${r.players} - ${r.host}</span>
-                </div>`).join('');
+            // Danh sách Tiến Lên
+            const tlmnList = document.getElementById('room-list');
+            if (tlmnList) {
+                // Lọc phòng KHÔNG PHẢI Caro (ID không bắt đầu bằng 'C-')
+                const tlmnRooms = rooms.filter(r => !r.id.startsWith('C-'));
+                if (tlmnRooms.length === 0) tlmnList.innerHTML = "<p>Chưa có phòng.</p>";
+                else tlmnList.innerHTML = tlmnRooms.map(r => `
+                    <div class="room-item" onclick="joinRoom('${r.id}')">
+                        <span><b>${r.id}</b></span>
+                        <span>${r.players} - ${r.host}</span>
+                    </div>`).join('');
+            }
+
+            // Danh sách Caro (Mới)
+            const caroList = document.getElementById('caro-room-list');
+            if (caroList) {
+                // Lọc phòng Caro (ID bắt đầu bằng 'C-')
+                const caroRooms = rooms.filter(r => r.id.startsWith('C-'));
+                if (caroRooms.length === 0) caroList.innerHTML = "<p>Chưa có phòng.</p>";
+                else caroList.innerHTML = caroRooms.map(r => `
+                    <div class="room-item" onclick="joinCaroRoom('${r.id}')">
+                        <span><b>${r.id}</b></span>
+                        <span>${r.players} - ${r.host}</span>
+                    </div>`).join('');
+            }
         });
 
         socket.on('room_joined', (data) => {
@@ -512,6 +630,113 @@
         });
         socket.on('force_leave', (data) => { alert(data.msg); goHome(); });
         socket.on('error', (data) => alert(data.msg));
+
+        // --- 2. CÁC HÀM ĐIỀU KHIỂN SẢNH CARO ---
+        function showCaroMenu() {
+            showScreen('caro-lobby');
+        }
+
+        // Tạo phòng Caro
+        function createCaro(mode) {
+            const name = document.getElementById('username').value;
+            socket.emit('create_caro', {mode: mode, name: name});
+        }
+
+        // Vào phòng bằng cách nhập mã
+        function joinCaroByInput() {
+            const code = document.getElementById('caro-code-input').value.toUpperCase();
+            const name = document.getElementById('username').value;
+            if(!code) return alert("Vui lòng nhập mã phòng!");
+            socket.emit('join_caro', {code: code, name: name});
+        }
+
+        // Vào phòng bằng cách bấm vào danh sách
+        function joinCaroRoom(id) {
+            const name = document.getElementById('username').value;
+            socket.emit('join_caro', {code: id, name: name});
+        }
+        // --- LOGIC CARO (Thêm vào cuối script) ---
+        
+        // 1. Vẽ bàn cờ 15x15
+        function initCaroBoard() {
+            const boardDiv = document.getElementById('caro-board');
+            boardDiv.innerHTML = '';
+            for(let r=0; r<15; r++){
+                for(let c=0; c<15; c++){
+                    const cell = document.createElement('div');
+                    cell.className = 'cell';
+                    cell.id = `c-${r}-${c}`;
+                    cell.onclick = () => socket.emit('caro_move', {r: r, c: c});
+                    boardDiv.appendChild(cell);
+                }
+            }
+        }
+
+        // 2. Cập nhật sự kiện room_joined để nhận biết game Caro
+        // (Bạn cần SỬA LẠI đoạn socket.on('room_joined') cũ thành đoạn này)
+        socket.off('room_joined'); // Tắt listener cũ đi cho chắc
+        socket.on('room_joined', (data) => {
+            if(data.game_type === 'tienlen') {
+                showScreen('tlmn-game');
+                document.getElementById('rid-display').innerText = "Phòng: " + data.room_id;
+            } else if (data.game_type === 'caro') {
+                showScreen('caro-game');
+                document.getElementById('caro-rid').innerText = data.room_id;
+                initCaroBoard(); // Vẽ bàn cờ ngay khi vào
+            }
+        });
+
+        // 3. Nhận cập nhật bàn cờ từ Server
+        // Update bàn cờ Caro
+        socket.on('caro_update', (data) => {
+            // 1. Reset bàn cờ (xóa X/O cũ)
+            document.querySelectorAll('.cell').forEach(c => {
+                c.innerText = ''; 
+                c.className='cell'; // Reset về class gốc
+            });
+            
+            // 2. Điền X/O mới từ server gửi về
+            data.board.forEach(item => {
+                const [pos, val] = item; // pos = [row, col]
+                const cell = document.getElementById(`c-${pos[0]}-${pos[1]}`);
+                if(cell) {
+                    cell.innerText = val;
+                    cell.classList.add(val.toLowerCase()); // Thêm class .x hoặc .o để tô màu
+                }
+            });
+
+            // 3. Cập nhật TÊN NGƯỜI CHƠI (Mới thêm)
+            if (data.names) {
+                document.getElementById('player-x').innerText = 'X: ' + data.names.X;
+                document.getElementById('player-o').innerText = 'O: ' + data.names.O;
+            }
+
+            // 4. Highlight lượt đi
+            const px = document.getElementById('player-x');
+            const po = document.getElementById('player-o');
+
+            if(data.turn === 'X') { 
+                px.classList.add('active-turn-box'); 
+                po.classList.remove('active-turn-box'); 
+            } else { 
+                po.classList.add('active-turn-box'); 
+                px.classList.remove('active-turn-box'); 
+            }
+
+            // 5. Thông báo thắng
+            const controls = document.getElementById('caro-controls');
+            if(data.winner) {
+                // Có người thắng -> Hiện nút "Ván Mới"
+                controls.style.display = 'block';
+                
+                // Hiện Popup chúc mừng
+                const winnerName = data.names ? data.names[data.winner] : data.winner;
+                setTimeout(() => alert(`🏆 CHÚC MỪNG! ${winnerName} (${data.winner}) ĐÃ CHIẾN THẮNG!`), 100);
+            } else {
+                // Đang chơi -> Ẩn nút "Ván Mới"
+                controls.style.display = 'none';
+            }
+        });
     </script>
 </body>
 </html>

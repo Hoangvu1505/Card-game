@@ -8,6 +8,7 @@ from room_manager import RoomManager
 # Import các class Game
 from games.tienlen import TienLenGame
 from games.blackjack import BlackjackGame
+from games.caro import CaroGame #mới
 
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 app = FastAPI()
@@ -22,7 +23,51 @@ async def get():
         return HTMLResponse(content=f.read())
 
 async def broadcast_room_list():
-    rooms = manager.get_public_rooms()
+    # Tự quét danh sách phòng thay vì dùng manager.get_public_rooms()
+    # để kiểm soát dữ liệu chính xác cho cả Caro và Tiến Lên
+    rooms = []
+    
+    for r_id, game in manager.rooms.items():
+        # 1. Chỉ hiện phòng đang CHỜ (WAITING)
+        if getattr(game, 'state', '') != 'WAITING': continue
+        
+        # 2. Không hiện phòng chơi với BOT
+        if getattr(game, 'is_bot_mode', False): continue
+            
+        # KHAI BÁO BIẾN TẠM
+        count = 0
+        max_p = 0
+        host_name = "Ẩn danh"
+
+        # --- TRƯỜNG HỢP 1: GAME TIẾN LÊN (Dùng seats) ---
+        if hasattr(game, 'seats'): 
+            # Đếm số ghế có người ngồi
+            count = len([s for s in game.seats if s])
+            max_p = 4
+            
+            # Tìm tên chủ phòng (dựa vào host_sid)
+            if hasattr(game, 'host_sid'):
+                for seat in game.seats:
+                    if seat and seat['sid'] == game.host_sid:
+                        host_name = seat['name']
+                        break
+        
+        # --- TRƯỜNG HỢP 2: GAME CARO (Dùng players) ---
+        elif hasattr(game, 'players'):
+            count = len(game.players)
+            max_p = 2
+            # Caro lưu trực tiếp host_name (do mình gán lúc tạo)
+            host_name = getattr(game, 'host_name', 'Player')
+
+        # 3. Đóng gói dữ liệu
+        rooms.append({
+            'id': r_id,
+            'players': f"{count}/{max_p}", # Ví dụ: "1/4" hoặc "1/2"
+            'host': host_name
+        })
+
+    # Gửi danh sách về Client
+    print(f"📡 Danh sách phòng: {rooms}") 
     await sio.emit('room_list_update', rooms)
 
 async def handle_game_end(game, winner_name):
@@ -253,5 +298,121 @@ async def broadcast_tlmn_state(game):
                 'is_host': (game.host_sid == p['sid'])
             }, room=p['sid'])
 
+# --- CARO (CỜ CARO) ---
+@sio.event
+async def create_caro(sid, data):
+    print(f"--- ĐANG TẠO PHÒNG CARO CHO {sid} ---") # In log debug
+    
+    mode = data.get('mode') 
+    name = data.get('name', 'Player')
+    is_bot = (mode == 'bot')
+    
+    # 1. Tạo ID bắt đầu bằng "C-"
+    room_id = f"C-{sid[:4]}".upper()
+    
+    # 2. Khởi tạo Game
+    game = CaroGame(room_id, host_sid=sid)
+    game.is_bot_mode = is_bot
+    
+    # --- QUAN TRỌNG: BẮT BUỘC PHẢI CÓ DÒNG NÀY ---
+    # Nếu thiếu host_name, RoomManager sẽ không hiển thị phòng ra danh sách
+    game.host_name = name 
+    # ---------------------------------------------
+    
+    game.add_player(sid, name)
+    
+    if is_bot:
+        game.players['BOT'] = {'name': 'Máy Siêu Cấp', 'symbol': 'O'}
+    
+    # 3. Lưu vào Manager
+    manager.rooms[room_id] = game 
+    sid_to_room[sid] = room_id
+    
+    print(f"-> Đã lưu phòng {room_id} vào Manager. Host: {game.host_name}") # In log debug
+
+    # 4. Vào phòng socket
+    await sio.enter_room(sid, room_id)
+    await sio.emit('room_joined', {'room_id': room_id, 'game_type': 'caro'}, room=sid)
+    
+    # 5. Cập nhật danh sách (Chỉ khi chơi Online)
+    if not is_bot: 
+        print("-> Đang gửi danh sách phòng cập nhật...") # In log debug
+        await broadcast_room_list()
+    else:
+        print("-> Chế độ Bot: Không hiện lên danh sách.")
+
+    await broadcast_caro_state(game)
+@sio.event
+async def join_caro(sid, data):
+    room_id = data.get('code')
+    name = data.get('name', 'Guest')
+    
+    game = manager.rooms.get(room_id)
+    if game and isinstance(game, CaroGame) and game.state == 'WAITING':
+        game.add_player(sid, name)
+        sid_to_room[sid] = room_id
+        await sio.enter_room(sid, room_id)
+        await sio.emit('room_joined', {'room_id': room_id, 'game_type': 'caro'}, room=sid)
+        await broadcast_caro_state(game)
+        await broadcast_room_list() # Cập nhật danh sách để ẩn phòng full
+    else:
+        await sio.emit('error', {'msg': 'Phòng không tồn tại hoặc đã đầy!'}, room=sid)
+
+@sio.event
+async def caro_move(sid, data):
+    room_id = sid_to_room.get(sid)
+    game = manager.rooms.get(room_id)
+    if not game or not isinstance(game, CaroGame): return
+
+    row, col = data.get('r'), data.get('c')
+    success, msg = game.make_move(sid, row, col)
+    
+    if success:
+        await broadcast_caro_state(game)
+        
+        # Nếu chơi với Bot và game chưa kết thúc -> Bot đánh
+        if game.is_bot_mode and game.state == 'PLAYING' and game.turn == 'O':
+            await asyncio.sleep(0.5) # Giả vờ suy nghĩ
+            move = game.bot_move()
+            if move:
+                game.make_move('BOT', move[0], move[1])
+                await broadcast_caro_state(game)
+    else:
+        pass # Có thể gửi lỗi nếu muốn
+
+async def broadcast_caro_state(game):
+    # 1. Tạo danh sách tên map theo phe X và O
+    player_names = {'X': 'Đang chờ...', 'O': 'Đang chờ...'}
+    for p_data in game.players.values():
+        player_names[p_data['symbol']] = p_data['name']
+    # Gửi trạng thái bàn cờ cho tất cả người trong phòng
+    info = {
+        'board': list(game.board.items()), # Convert dict to list [(r,c), val]
+        'turn': game.turn,
+        'winner': game.winner,
+        'names': player_names,
+        'players': {k: v['name'] for k, v in game.players.items() if k != 'BOT' or True}
+    }
+    await sio.emit('caro_update', info, room=game.room_id)
+
+@sio.event
+async def caro_restart(sid):
+    room_id = sid_to_room.get(sid)
+    game = manager.rooms.get(room_id)
+    
+    # Chỉ chủ phòng hoặc cả 2 đều có quyền reset (ở đây cho phép cả 2 cho tiện)
+    if game and isinstance(game, CaroGame):
+        game.reset_game()
+        await broadcast_caro_state(game) # Gửi bàn cờ trắng về cho mọi người
+
+@sio.event
+async def caro_leave(sid):
+    room_id = sid_to_room.get(sid)
+    if room_id:
+        # Tận dụng hàm disconnect để xóa player và dọn phòng nếu trống
+        await disconnect(sid) 
+        # Gửi xác nhận về client (để client yên tâm là đã thoát)
+        await sio.emit('left_room', {}, room=sid)
+#--- CHẠY SERVER ---
 if __name__ == "__main__":
     uvicorn.run("main:sio_app", host="0.0.0.0", port=8000, reload=True)
