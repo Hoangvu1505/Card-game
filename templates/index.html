@@ -449,7 +449,22 @@
         }
 
         function leaveRoom(type) {
-            if(type === 'tlmn') socket.emit('tlmn_action', {act: 'leave'});
+            if(type === 'tlmn') {
+                socket.emit('tlmn_action', {act: 'leave'});
+                
+                // --- THÊM ĐOẠN NÀY ĐỂ XÓA NÚT KHI RỜI PHÒNG ---
+                // 1. Ẩn cụm nút Đánh bài / Bỏ lượt
+                document.getElementById('game-controls').style.display = 'none';
+                
+                // 2. Ẩn nút Bắt đầu / Chơi lại & Reset chữ về mặc định
+                const startBtn = document.getElementById('btn-start');
+                startBtn.style.display = 'none';
+                startBtn.innerText = "BẮT ĐẦU"; 
+                
+                // 3. (Tùy chọn) Xóa bài trên bàn để lần sau vào nhìn cho sạch
+                document.getElementById('table-center').innerHTML = '';
+                // ------------------------------------------------
+            } 
             else if (type === 'caro') {
                 socket.emit('caro_leave'); 
             }
@@ -513,12 +528,7 @@
             }
         });
 
-        socket.on('room_joined', (data) => {
-            if(data.game_type === 'tienlen') {
-                showScreen('tlmn-game');
-                document.getElementById('rid-display').innerText = "Phòng: " + data.room_id;
-            }
-        });
+
 
         // --- CẬP NHẬT GIAO DIỆN (CHÍNH) ---
         socket.on('tlmn_update', (data) => {
@@ -563,12 +573,12 @@
             centerDiv.innerHTML = (data.last_move && data.last_move.length > 0) ? data.last_move.map(renderCard).join('') : "";
 
             const startBtn = document.getElementById('btn-start');
-            if (data.is_host && (data.state === 'WAITING' || data.state === 'FINISHED')) {
-                startBtn.style.display = 'block';
-                startBtn.innerText = (data.state === 'FINISHED') ? "CHƠI LẠI" : "BẮT ĐẦU";
-            } else {
-                startBtn.style.display = 'none';
-            }
+        if (data.is_host && (data.state === 'WAITING' || data.state === 'FINISHED') && data.state !== 'PLAYING') {
+            startBtn.style.display = 'block';
+            startBtn.innerText = (data.state === 'FINISHED') ? "CHƠI LẠI" : "BẮT ĐẦU";
+        } else {
+            startBtn.style.display = 'none';
+        }
             document.getElementById('game-controls').style.display = (data.seats[0] && data.seats[0].is_turn) ? 'block' : 'none';
         });
 
@@ -721,10 +731,18 @@
             if(data.game_type === 'tienlen') {
                 showScreen('tlmn-game');
                 document.getElementById('rid-display').innerText = "Phòng: " + data.room_id;
+                
+                // --- THÊM DÒNG NÀY ---
+                // Ẩn ngay nút Bắt đầu/Chơi lại để xóa trạng thái cũ
+                const startBtn = document.getElementById('btn-start');
+                startBtn.style.display = 'none'; 
+                startBtn.innerText = 'BẮT ĐẦU'; // Reset chữ về mặc định
+                // ---------------------
+                
             } else if (data.game_type === 'caro') {
                 showScreen('caro-game');
                 document.getElementById('caro-rid').innerText = data.room_id;
-                initCaroBoard(); // Vẽ bàn cờ ngay khi vào
+                initCaroBoard(); 
             }
         });
 

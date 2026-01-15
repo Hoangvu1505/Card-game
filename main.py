@@ -187,13 +187,17 @@ async def tlmn_start_game(sid):
     game = manager.rooms.get(room_id)
     if game and game.host_sid == sid:
         if game.start_game():
+            # --- FIX LỖI: Cưỡng chế chuyển trạng thái sang ĐANG CHƠI ---
+            game.state = 'PLAYING' 
+            # (Nếu thiếu dòng này, game có thể vẫn lưu trạng thái FINISHED của ván trước
+            # khiến nút Chơi lại không chịu biến mất)
+            # -----------------------------------------------------------
+
             # 1. Cập nhật giao diện bàn cờ cho người chơi
             await broadcast_tlmn_state(game)
 
-            # --- FIX LỖI ĐƠ BOT Ở ĐÂY ---
-            # 2. Nếu là chế độ chơi với Bot, hãy kích hoạt hàm xử lý Bot ngay lập tức
-            # Để phòng trường hợp Bot là người đi đầu tiên
-            if game.is_bot_mode and game.state == 'PLAYING':
+            # 2. Nếu là chế độ chơi với Bot, kích hoạt Bot
+            if game.is_bot_mode:
                 await handle_bot_turns(game)
         else:
             await sio.emit('error', {'msg': 'Cần ít nhất 2 người chơi!'}, room=sid)
