@@ -77,8 +77,6 @@ class CaroGame:
         if possible_moves:
             return random.choice(list(possible_moves))
         return None
-    
-    # ... (Các hàm cũ giữ nguyên)
 
     def reset_game(self):
         
@@ -87,3 +85,103 @@ class CaroGame:
         self.turn = 'X'      # X đi trước
         self.state = 'PLAYING'
         return True
+    
+    # ----------------------------------------------------------------
+    # --- PHẦN TRÍ TUỆ NHÂN TẠO (AI) MỚI ---
+    # ----------------------------------------------------------------
+    
+    def bot_move(self):
+        # Nếu bàn cờ trống, đánh luôn vào giữa cho "ngầu"
+        if not self.board:
+            return 7, 7
+
+        # Ký hiệu của Bot và Người
+        bot_sym = 'O'
+        human_sym = 'X'
+        
+        best_score = -1
+        best_moves = []
+
+        # Chỉ quét những ô trống nằm gần các ô đã đánh (tối ưu hiệu suất)
+        # Thay vì quét cả 225 ô, ta chỉ quét ô trống có hàng xóm
+        possible_moves = self.get_neighbor_cells()
+        
+        if not possible_moves: 
+            return 7, 7 # Phòng hờ
+
+        for (r, c) in possible_moves:
+            # Tính điểm tấn công (Bot đánh vào đây lợi thế nào?)
+            attack_score = self.evaluate_point(r, c, bot_sym)
+            
+            # Tính điểm phòng thủ (Nếu Bot không đánh, Người đánh vào đây nguy hiểm thế nào?)
+            defense_score = self.evaluate_point(r, c, human_sym)
+            
+            # Tổng điểm = Tấn công + Phòng thủ
+            # (Thường phòng thủ quan trọng hơn xíu để không thua nhảm)
+            current_score = attack_score + defense_score
+
+            if current_score > best_score:
+                best_score = current_score
+                best_moves = [(r, c)]
+            elif current_score == best_score:
+                best_moves.append((r, c))
+        
+        # Chọn ngẫu nhiên trong các nước đi tốt nhất (để bot đỡ máy móc)
+        if best_moves:
+            return random.choice(best_moves)
+        
+        return random.choice(list(possible_moves))
+
+    def get_neighbor_cells(self):
+        # Lấy tất cả ô trống có ít nhất 1 quân cờ nằm cạnh (trong phạm vi 2 ô)
+        candidates = set()
+        for (r, c) in self.board:
+            for dr in range(-2, 3):
+                for dc in range(-2, 3):
+                    if dr == 0 and dc == 0: continue
+                    nr, nc = r + dr, c + dc
+                    if 0 <= nr < 15 and 0 <= nc < 15 and (nr, nc) not in self.board:
+                        candidates.add((nr, nc))
+        return candidates
+
+    def evaluate_point(self, r, c, symbol):
+        # Hàm tính điểm cho 1 ô dựa trên 4 hướng
+        total_score = 0
+        directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
+        
+        for dr, dc in directions:
+            consecutive = 0   # Số quân liên tiếp
+            open_ends = 0     # Số đầu thoáng (không bị chặn)
+            
+            # Duyệt hướng dương
+            for i in range(1, 5):
+                pos = (r + dr*i, c + dc*i)
+                val = self.board.get(pos)
+                if val == symbol: consecutive += 1
+                elif val is None: # Gặp ô trống
+                    if 0 <= pos[0] < 15 and 0 <= pos[1] < 15: open_ends += 1
+                    break
+                else: break # Gặp quân địch -> bị chặn
+
+            # Duyệt hướng âm
+            for i in range(1, 5):
+                pos = (r - dr*i, c - dc*i)
+                val = self.board.get(pos)
+                if val == symbol: consecutive += 1
+                elif val is None: 
+                    if 0 <= pos[0] < 15 and 0 <= pos[1] < 15: open_ends += 1
+                    break
+                else: break
+
+            # Bảng điểm (Heuristic Score)
+            if consecutive >= 4: total_score += 1000000 # 5 quân -> Thắng chắc
+            elif consecutive == 3:
+                if open_ends == 2: total_score += 50000 # 4 quân thoáng 2 đầu -> Sắp thắng
+                elif open_ends == 1: total_score += 1000 # 4 quân bị chặn 1 đầu
+            elif consecutive == 2:
+                if open_ends == 2: total_score += 500 # 3 quân thoáng
+                elif open_ends == 1: total_score += 100 
+            elif consecutive == 1:
+                if open_ends == 2: total_score += 10
+
+        return total_score

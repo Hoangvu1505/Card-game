@@ -309,18 +309,57 @@
         <button class="btn-back" onclick="leaveRoom('caro')">⬅ Thoát</button>
         <h2 id="caro-status" style="margin-top: 0;">Cờ Caro - Phòng: <span id="caro-rid"></span></h2>
         
-        <div id="caro-board"></div>
-        
-        <div style="margin-top: 20px;">
-            <div id="player-x" style="display:inline-block; padding: 10px; border: 2px solid white; border-radius: 10px; width: 100px;">X: Chờ...</div>
-            <div id="player-o" style="display:inline-block; padding: 10px; border: 2px solid white; border-radius: 10px; margin-left: 20px; width: 100px;">O: Chờ...</div>
+        <button class="chat-btn" style="top: 60px; right: 20px;" onclick="toggleCaroChat()">💬</button>
+
+        <div style="display: flex; justify-content: center; align-items: flex-end; gap: 0px; margin-top: 20px;">
+            
+            <div id="wrapper-x" style="position: relative; text-align: center; padding-bottom: 50px; margin-right: 10px;">
+                <div class="chat-bubble" style="bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; white-space: nowrap;"></div> 
+                <div id="player-x" style="padding: 15px; border: 3px solid white; border-radius: 15px; width: 130px; background: #2c3e50; font-weight: bold; font-size: 16px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+                    X: Chờ...
+                </div>
+            </div>
+
+            <div id="caro-board"></div>
+            
+            <div id="wrapper-o" style="position: relative; text-align: center; padding-bottom: 50px; margin-left: 10px;">
+                <div class="chat-bubble" style="bottom: 80px; left: 50%; transform: translateX(-50%); z-index: 100; white-space: nowrap;"></div> 
+                <div id="player-o" style="padding: 15px; border: 3px solid white; border-radius: 15px; width: 130px; background: #2c3e50; font-weight: bold; font-size: 16px; box-shadow: 0 5px 15px rgba(0,0,0,0.3);">
+                    O: Chờ...
+                </div>
+            </div>
+
         </div>
+
+        </div>
+
         <div id="caro-controls" style="text-align: center; margin-top: 20px; display: none;">
             <button class="btn-green" style="font-size: 18px; padding: 10px 30px;" onclick="socket.emit('caro_restart')">🔄 VÁN MỚI</button>
         </div>
 
-    </div>
-    </div>
+        <div id="caro-chat-popup" class="chat-popup" style="display: none; position: absolute; bottom: 100px; right: 20px; width: 300px; background: rgba(0,0,0,0.9); padding: 10px; border-radius: 10px; grid-template-columns: repeat(4, 1fr); gap: 8px; z-index: 999; border: 2px solid #f1c40f;">
+            <div class="chat-input-row">
+                <input type="text" id="caro-chat-msg" placeholder="Nhập tin nhắn..." onkeydown="checkCaroEnter(event)">
+                <button onclick="sendCaroText()">Gửi</button>
+            </div>
+            <div class="sticker-item" onclick="sendCaroChat('text', '😂')">😂</div>
+            <div class="sticker-item" onclick="sendCaroChat('text', '😡')">😡</div>
+            <div class="sticker-item" onclick="sendCaroChat('text', '😭')">😭</div>
+            <div class="sticker-item" onclick="sendCaroChat('text', '😎')">😎</div>
+            <div class="sticker-item" onclick="sendCaroChat('text', '⏳')">⏳</div>
+            <div class="sticker-item" onclick="sendCaroChat('text', '😏')">😏</div>
+            <div class="sticker-item" onclick="sendCaroChat('text', 'Nhanh lên má!')">nhanh lên má!</div>
+            <div class="sticker-item" onclick="sendCaroChat('image', 'https://media.giphy.com/media/GeimqsH0TLDt4tScGw/giphy.gif')"><img src="https://media.giphy.com/media/GeimqsH0TLDt4tScGw/giphy.gif"></div>
+            <div class="sticker-item" onclick="sendCaroChat('image', 'https://media.giphy.com/media/H5C8CevNMbpBqNqFjl/giphy.gif')"><img src="https://media.giphy.com/media/H5C8CevNMbpBqNqFjl/giphy.gif"></div>
+            <div class="sticker-item" onclick="sendCaroChat('image', 'https://ss-images.saostar.vn/2018/12/31/4357621/tenor.gif')"><img src="https://ss-images.saostar.vn/2018/12/31/4357621/tenor.gif"></div>
+            <div class="sticker-item" onclick="sendCaroChat('image', 'https://media1.tenor.com/m/wzDpyUZ3_xQAAAAC/hello-%E4%BD%A0%E5%A5%BD.gif')"><img src="https://media1.tenor.com/m/wzDpyUZ3_xQAAAAC/hello-%E4%BD%A0%E5%A5%BD.gif"></div>
+            <div class="sticker-item" onclick="sendCaroChat('image', 'https://media.tenor.com/EX6You2MNyUAAAAM/chowyunfat-godofgamblers.gif')"><img src="https://media.tenor.com/EX6You2MNyUAAAAM/chowyunfat-godofgamblers.gif"></div>
+            <div class="sticker-item" onclick="sendCaroChat('image', 'https://media1.tenor.com/m/-z_M-8I9ULYAAAAd/stephen-chow-dewa-judi.gif')"><img src="https://media1.tenor.com/m/-z_M-8I9ULYAAAAd/stephen-chow-dewa-judi.gif"></div>
+            <div class="sticker-item" onclick="sendCaroChat('image', 'https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWN0MHd0ZWc2NzIwNGVmNHh3MzJsdG1qMzF4aXh6M2dvOW5laHloOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/d9A3OAEoPMsSEMcRPy/giphy.gif')"><img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWN0MHd0ZWc2NzIwNGVmNHh3MzJsdG1qMzF4aXh6M2dvOW5laHloOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/d9A3OAEoPMsSEMcRPy/giphy.gif"></div>
+            <div class="sticker-item" onclick="sendCaroChat('image', 'https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzZwMG9pcTN0ZzF6M28xaXV0cndpeGhmb3B2ODltcGQ4M2pheXF1dyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/R312C3MEVg4SCYAber/giphy.gif')"><img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzZwMG9pcTN0ZzF6M28xaXV0cndpeGhmb3B2ODltcGQ4M2pheXF1dyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/R312C3MEVg4SCYAber/giphy.gif"></div>
+            <div class="sticker-item" onclick="sendCaroChat('image', 'https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ203Nzh0MzdobHhwcXNseWgxbjRmaTE3azdmYWxtemNsaDhqY2J1NyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/KFuXeADlsfCFCoxfUB/giphy.gif')"><img src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ203Nzh0MzdobHhwcXNseWgxbjRmaTE3azdmYWxtemNsaDhqY2J1NyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/KFuXeADlsfCFCoxfUB/giphy.gif"></div>
+        </div>
+        </div>
     <div id="tlmn-game" class="screen">
         
         <div style="position: absolute; top: 10px; left: 10px;">
@@ -351,6 +390,9 @@
                 <div class="sticker-item" onclick="sendChat('image', 'https://media1.tenor.com/m/wzDpyUZ3_xQAAAAC/hello-%E4%BD%A0%E5%A5%BD.gif')"><img src="https://media1.tenor.com/m/wzDpyUZ3_xQAAAAC/hello-%E4%BD%A0%E5%A5%BD.gif"></div>
                 <div class="sticker-item" onclick="sendChat('image', 'https://media.tenor.com/EX6You2MNyUAAAAM/chowyunfat-godofgamblers.gif')"><img src="https://media.tenor.com/EX6You2MNyUAAAAM/chowyunfat-godofgamblers.gif"></div>
                 <div class="sticker-item" onclick="sendChat('image', 'https://media1.tenor.com/m/-z_M-8I9ULYAAAAd/stephen-chow-dewa-judi.gif')"><img src="https://media1.tenor.com/m/-z_M-8I9ULYAAAAd/stephen-chow-dewa-judi.gif"></div>
+                <div class="sticker-item" onclick="sendChat('image', 'https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWN0MHd0ZWc2NzIwNGVmNHh3MzJsdG1qMzF4aXh6M2dvOW5laHloOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/d9A3OAEoPMsSEMcRPy/giphy.gif')"><img src="https://media2.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWN0MHd0ZWc2NzIwNGVmNHh3MzJsdG1qMzF4aXh6M2dvOW5laHloOCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/d9A3OAEoPMsSEMcRPy/giphy.gif"></div>
+                <div class="sticker-item" onclick="sendChat('image', 'https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzZwMG9pcTN0ZzF6M28xaXV0cndpeGhmb3B2ODltcGQ4M2pheXF1dyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/R312C3MEVg4SCYAber/giphy.gif')"><img src="https://media0.giphy.com/media/v1.Y2lkPTc5MGI3NjExNzZwMG9pcTN0ZzF6M28xaXV0cndpeGhmb3B2ODltcGQ4M2pheXF1dyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/R312C3MEVg4SCYAber/giphy.gif"></div>
+                <div class="sticker-item" onclick="sendChat('image', 'https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ203Nzh0MzdobHhwcXNseWgxbjRmaTE3azdmYWxtemNsaDhqY2J1NyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/KFuXeADlsfCFCoxfUB/giphy.gif')"><img src="https://media4.giphy.com/media/v1.Y2lkPTc5MGI3NjExZ203Nzh0MzdobHhwcXNseWgxbjRmaTE3azdmYWxtemNsaDhqY2J1NyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/KFuXeADlsfCFCoxfUB/giphy.gif"></div>
             </div>
             </div>
             
@@ -688,28 +730,48 @@
 
         // 3. Nhận cập nhật bàn cờ từ Server
         // Update bàn cờ Caro
+   
         socket.on('caro_update', (data) => {
             // 1. Reset bàn cờ (xóa X/O cũ)
             document.querySelectorAll('.cell').forEach(c => {
                 c.innerText = ''; 
-                c.className='cell'; // Reset về class gốc
+                c.className='cell'; 
             });
             
-            // 2. Điền X/O mới từ server gửi về
+            // 2. Điền X/O mới
             data.board.forEach(item => {
-                const [pos, val] = item; // pos = [row, col]
+                const [pos, val] = item; 
                 const cell = document.getElementById(`c-${pos[0]}-${pos[1]}`);
                 if(cell) {
                     cell.innerText = val;
-                    cell.classList.add(val.toLowerCase()); // Thêm class .x hoặc .o để tô màu
+                    cell.classList.add(val.toLowerCase());
                 }
             });
 
-            // 3. Cập nhật TÊN NGƯỜI CHƠI (Mới thêm)
+            // 3. Cập nhật TÊN & GÁN ID CHAT (SỬA LẠI TOÀN BỘ PHẦN NÀY)
+            // -----------------------------------------------------------
             if (data.names) {
+                // Hiển thị tên
                 document.getElementById('player-x').innerText = 'X: ' + data.names.X;
                 document.getElementById('player-o').innerText = 'O: ' + data.names.O;
             }
+
+            // Gán ID cho bong bóng Chat dựa trên danh sách players
+            // (Server gửi: players = {'sid1': {'name': 'A', 'symbol': 'X'}, ...})
+            if (data.players) {
+                for (const [sid, p] of Object.entries(data.players)) {
+                    if (p.symbol === 'X') {
+                        // Tìm bong bóng của X và gán ID
+                        const bubble = document.querySelector('#wrapper-x .chat-bubble');
+                        if(bubble) bubble.id = `chat-bubble-${sid}`;
+                    } else if (p.symbol === 'O') {
+                        // Tìm bong bóng của O và gán ID
+                        const bubble = document.querySelector('#wrapper-o .chat-bubble');
+                        if(bubble) bubble.id = `chat-bubble-${sid}`;
+                    }
+                }
+            }
+            // -----------------------------------------------------------
 
             // 4. Highlight lượt đi
             const px = document.getElementById('player-x');
@@ -723,20 +785,42 @@
                 px.classList.remove('active-turn-box'); 
             }
 
-            // 5. Thông báo thắng
+            // 5. Thắng thua
             const controls = document.getElementById('caro-controls');
             if(data.winner) {
-                // Có người thắng -> Hiện nút "Ván Mới"
                 controls.style.display = 'block';
-                
-                // Hiện Popup chúc mừng
                 const winnerName = data.names ? data.names[data.winner] : data.winner;
                 setTimeout(() => alert(`🏆 CHÚC MỪNG! ${winnerName} (${data.winner}) ĐÃ CHIẾN THẮNG!`), 100);
             } else {
-                // Đang chơi -> Ẩn nút "Ván Mới"
                 controls.style.display = 'none';
             }
         });
+        // --- LOGIC CHAT RIÊNG CHO CARO ---
+        
+        function toggleCaroChat() {
+            const popup = document.getElementById('caro-chat-popup');
+            popup.style.display = (popup.style.display === 'grid') ? 'none' : 'grid';
+            if (popup.style.display === 'grid') document.getElementById('caro-chat-msg').focus();
+        }
+
+        function sendCaroText() {
+            const input = document.getElementById('caro-chat-msg');
+            const text = input.value.trim();
+            if (text) {
+                sendCaroChat('text', text);
+                input.value = '';
+            }
+        }
+
+        function checkCaroEnter(e) {
+            if (e.key === "Enter") sendCaroText();
+        }
+
+        function sendCaroChat(type, content) {
+            // Tận dụng lại sự kiện send_chat của server (nó dùng chung cho mọi game)
+            socket.emit('send_chat', {type: type, content: content});
+            toggleCaroChat(); // Đóng popup sau khi chọn sticker
+        }
     </script>
 </body>
 </html>

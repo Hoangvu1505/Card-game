@@ -381,17 +381,22 @@ async def caro_move(sid, data):
         pass # Có thể gửi lỗi nếu muốn
 
 async def broadcast_caro_state(game):
-    # 1. Tạo danh sách tên map theo phe X và O
+    # 1. Tạo danh sách tên map theo phe X và O (Dùng để hiển thị tên nhanh)
     player_names = {'X': 'Đang chờ...', 'O': 'Đang chờ...'}
     for p_data in game.players.values():
         player_names[p_data['symbol']] = p_data['name']
-    # Gửi trạng thái bàn cờ cho tất cả người trong phòng
+
+    # 2. Gửi thông tin về Client
     info = {
-        'board': list(game.board.items()), # Convert dict to list [(r,c), val]
+        'board': list(game.board.items()),
         'turn': game.turn,
         'winner': game.winner,
         'names': player_names,
-        'players': {k: v['name'] for k, v in game.players.items() if k != 'BOT' or True}
+        
+        # --- SỬA DÒNG NÀY ---
+        # Gửi nguyên cục data (gồm name và symbol) để Client biết ai là X, ai là O mà gán ID chat
+        'players': {k: v for k, v in game.players.items() if k != 'BOT' or True}
+        # --------------------
     }
     await sio.emit('caro_update', info, room=game.room_id)
 
