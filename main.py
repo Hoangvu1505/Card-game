@@ -420,4 +420,9 @@ async def caro_leave(sid):
         await sio.emit('left_room', {}, room=sid)
 #--- CHẠY SERVER ---
 if __name__ == "__main__":
-    uvicorn.run("main:sio_app", host="0.0.0.0", port=8000, reload=True)
+    import os
+    # Lấy PORT từ biến môi trường của Render (mặc định là 10000 nếu chạy local)
+    port = int(os.environ.get("PORT", 8000)) 
+    
+    # Quan trọng: host phải là "0.0.0.0" (không được để 127.0.0.1 hay localhost)
+    uvicorn.run("main:sio_app", host="0.0.0.0", port=port, reload=False)
