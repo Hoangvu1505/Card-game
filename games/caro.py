@@ -1,15 +1,21 @@
 import random
+import time
 
 class CaroGame:
     def __init__(self, room_id, host_sid=None):
         self.room_id = room_id
         self.host_sid = host_sid
-        self.players = {}  # {sid: 'X' hoặc 'O'}
-        self.board = {}    # Key: (row, col), Value: 'X'/'O'
-        self.turn = 'X'    # X đi trước
+        self.host_name = "Chủ phòng"
+        self.players = {}
+        self.board = {} 
+        self.turn = 'X' 
         self.state = 'WAITING'
         self.winner = None
         self.is_bot_mode = False
+        self.last_move = None
+
+        # Giữ Depth = 3 để đảm bảo tốc độ, nhưng sẽ tăng độ thông minh bằng Heuristic xịn
+        self.search_depth = 3
 
     def add_player(self, sid, name):
         if len(self.players) >= 2: return False
@@ -20,37 +26,29 @@ class CaroGame:
         return True
 
     def make_move(self, sid, row, col):
-        if self.state != 'PLAYING' or self.winner: return False, "Chưa chơi được"
+        if self.state != 'PLAYING' or self.winner: return False, "Game đã dừng"
+        if sid != 'BOT' and sid not in self.players: return False, "Lỗi xác thực"
         
-        # Nếu là Bot mode, sid của Bot là 'BOT'
-        if sid != 'BOT' and sid not in self.players: return False, "Bạn không ở trong phòng"
-        
-        # Kiểm tra lượt
         symbol = self.players[sid]['symbol'] if sid != 'BOT' else 'O'
         if symbol != self.turn: return False, "Chưa đến lượt"
 
-        # Kiểm tra ô trống
-        if (row, col) in self.board: return False, "Ô này đánh rồi"
+        if (row, col) in self.board: return False, "Ô đã đánh"
 
-        # Đánh dấu
         self.board[(row, col)] = symbol
+        self.last_move = (row, col)
         
-        # Check thắng
         if self.check_win(row, col, symbol):
             self.winner = symbol
             self.state = 'FINISHED'
         else:
-            # Đổi lượt
             self.turn = 'O' if self.turn == 'X' else 'X'
             
         return True, "OK"
 
     def check_win(self, r, c, symbol):
-        # Kiểm tra 4 hướng: Ngang, Dọc, Chéo chính, Chéo phụ
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
         for dr, dc in directions:
             count = 1
-            # Duyệt về 2 phía
             for i in range(1, 5):
                 if self.board.get((r + dr*i, c + dc*i)) == symbol: count += 1
                 else: break
@@ -60,128 +58,206 @@ class CaroGame:
             if count >= 5: return True
         return False
 
-    def bot_move(self):
-        # Bot đơn giản: Tìm ô trống ngẫu nhiên quanh các ô đã đánh (để không đánh quá xa)
-        # Nếu bàn trống trơn thì đánh giữa
-        if not self.board: return 7, 7
-        
-        possible_moves = set()
-        for (r, c) in self.board:
-            for dr in [-1, 0, 1]:
-                for dc in [-1, 0, 1]:
-                    if dr == 0 and dc == 0: continue
-                    nr, nc = r + dr, c + dc
-                    if 0 <= nr < 15 and 0 <= nc < 15 and (nr, nc) not in self.board:
-                        possible_moves.add((nr, nc))
-        
-        if possible_moves:
-            return random.choice(list(possible_moves))
-        return None
-
     def reset_game(self):
-        
-        self.board = {}      # Xóa bàn cờ
-        self.winner = None   # Xóa người thắng
-        self.turn = 'X'      # X đi trước
+        self.board = {}
+        self.winner = None
+        self.turn = 'X'
         self.state = 'PLAYING'
+        self.last_move = None
         return True
-    
+
     # ----------------------------------------------------------------
-    # --- PHẦN TRÍ TUỆ NHÂN TẠO (AI) MỚI ---
+    # --- BOT LOGIC: DEFENSIVE & AGGRESSIVE ---
     # ----------------------------------------------------------------
     
     def bot_move(self):
-        # Nếu bàn cờ trống, đánh luôn vào giữa cho "ngầu"
-        if not self.board:
-            return 7, 7
+        if not self.board: return 7, 7
 
-        # Ký hiệu của Bot và Người
-        bot_sym = 'O'
-        human_sym = 'X'
-        
-        best_score = -1
-        best_moves = []
-
-        # Chỉ quét những ô trống nằm gần các ô đã đánh (tối ưu hiệu suất)
-        # Thay vì quét cả 225 ô, ta chỉ quét ô trống có hàng xóm
         possible_moves = self.get_neighbor_cells()
-        
-        if not possible_moves: 
-            return 7, 7 # Phòng hờ
+        if not possible_moves: return 7, 7
 
-        for (r, c) in possible_moves:
-            # Tính điểm tấn công (Bot đánh vào đây lợi thế nào?)
-            attack_score = self.evaluate_point(r, c, bot_sym)
-            
-            # Tính điểm phòng thủ (Nếu Bot không đánh, Người đánh vào đây nguy hiểm thế nào?)
-            defense_score = self.evaluate_point(r, c, human_sym)
-            
-            # Tổng điểm = Tấn công + Phòng thủ
-            # (Thường phòng thủ quan trọng hơn xíu để không thua nhảm)
-            current_score = attack_score + defense_score
+        # 1. BƯỚC THỦ KHẨN CẤP (QUAN TRỌNG NHẤT)
+        # Kiểm tra xem có cần chặn ngay lập tức không (trước khi tính Minimax)
+        urgent_move = self.check_urgent_defense()
+        if urgent_move: 
+            print(f"🛡️ Bot chặn nguy hiểm tại: {urgent_move}")
+            return urgent_move
 
-            if current_score > best_score:
-                best_score = current_score
-                best_moves = [(r, c)]
-            elif current_score == best_score:
-                best_moves.append((r, c))
+        # 2. MINIMAX (Tính toán nước đi tốt nhất)
+        best_score = -float('inf')
+        best_move = None
+        alpha = -float('inf')
+        beta = float('inf')
+
+        # Sắp xếp nước đi để cắt nhánh nhanh hơn
+        ranked_moves = self.rank_moves(possible_moves, 'O')
+
+        for (r, c) in ranked_moves:
+            self.board[(r, c)] = 'O'
+            
+            # Bot tìm nước đi max, đối thủ (người) sẽ tìm nước min
+            score = self.minimax(self.search_depth - 1, False, alpha, beta)
+            
+            self.board.pop((r, c))
+
+            if score > best_score:
+                best_score = score
+                best_move = (r, c)
+            
+            alpha = max(alpha, score)
+            if beta <= alpha: break
+
+        return best_move if best_move else random.choice(possible_moves)
+
+    def minimax(self, depth, is_bot_turn, alpha, beta):
+        if depth == 0: return self.evaluate_board()
         
-        # Chọn ngẫu nhiên trong các nước đi tốt nhất (để bot đỡ máy móc)
-        if best_moves:
-            return random.choice(best_moves)
-        
-        return random.choice(list(possible_moves))
+        moves = self.get_neighbor_cells()
+        if not moves: return self.evaluate_board()
+
+        # Lấy Top 10 nước đi để tính cho nhanh
+        # moves = self.rank_moves(moves, 'O' if is_bot_turn else 'X')[:10]
+
+        if is_bot_turn: # Lượt Bot (O) -> Muốn điểm cao nhất
+            max_eval = -float('inf')
+            for (r, c) in moves:
+                self.board[(r, c)] = 'O'
+                if self.check_win_simulation(r, c, 'O'):
+                    self.board.pop((r, c))
+                    return 10000000 # Thắng là ưu tiên số 1
+                
+                eval_score = self.minimax(depth - 1, False, alpha, beta)
+                self.board.pop((r, c))
+                
+                max_eval = max(max_eval, eval_score)
+                alpha = max(alpha, eval_score)
+                if beta <= alpha: break 
+            return max_eval
+
+        else: # Lượt Người (X) -> Bot giả định người sẽ đánh nước tệ nhất cho Bot (điểm thấp nhất)
+            min_eval = float('inf')
+            for (r, c) in moves:
+                self.board[(r, c)] = 'X'
+                if self.check_win_simulation(r, c, 'X'):
+                    self.board.pop((r, c))
+                    return -10000000 # Người thắng là thảm họa
+                
+                eval_score = self.minimax(depth - 1, True, alpha, beta)
+                self.board.pop((r, c))
+                
+                min_eval = min(min_eval, eval_score)
+                beta = min(beta, eval_score)
+                if beta <= alpha: break
+            return min_eval
 
     def get_neighbor_cells(self):
-        # Lấy tất cả ô trống có ít nhất 1 quân cờ nằm cạnh (trong phạm vi 2 ô)
         candidates = set()
         for (r, c) in self.board:
-            for dr in range(-2, 3):
-                for dc in range(-2, 3):
+            for dr in range(-1, 2):
+                for dc in range(-1, 2):
                     if dr == 0 and dc == 0: continue
                     nr, nc = r + dr, c + dc
                     if 0 <= nr < 15 and 0 <= nc < 15 and (nr, nc) not in self.board:
                         candidates.add((nr, nc))
-        return candidates
+        return list(candidates)
+
+    def rank_moves(self, moves, player_symbol):
+        scores = []
+        for (r, c) in moves:
+            # Điểm = Tấn công + Phòng thủ (Ưu tiên phòng thủ hơn một chút)
+            score = self.evaluate_point(r, c, player_symbol) * 1.0 
+            score += self.evaluate_point(r, c, 'X' if player_symbol == 'O' else 'O') * 1.2
+            scores.append(((r, c), score))
+        scores.sort(key=lambda x: x[1], reverse=True)
+        return [x[0] for x in scores[:15]] # Lấy top 15 nước ngon nhất
+
+    def check_urgent_defense(self):
+        # Hàm này chạy riêng để bắt các trường hợp nguy hiểm KHÔNG THỂ BỎ QUA
+        candidates = self.get_neighbor_cells()
+        
+        # 1. Ưu tiên thắng (nếu Bot có 4 con)
+        for (r, c) in candidates:
+            if self.evaluate_point(r, c, 'O') >= 50000: return (r, c)
+            
+        # 2. Chặn thua (nếu Người có 3 thoáng hoặc 4 bị chặn)
+        # Điểm nguy hiểm > 2000 nghĩa là: 3 thoáng (3000) hoặc 4 chặn (2500)
+        for (r, c) in candidates:
+            if self.evaluate_point(r, c, 'X') >= 2000: return (r, c)
+            
+        return None
+
+    def evaluate_board(self):
+        score_o = 0
+        score_x = 0
+        for (r,c), val in self.board.items():
+            if val == 'O': score_o += self.evaluate_point_static(r, c, 'O')
+            else: score_x += self.evaluate_point_static(r, c, 'X')
+        return score_o - score_x
 
     def evaluate_point(self, r, c, symbol):
-        # Hàm tính điểm cho 1 ô dựa trên 4 hướng
-        total_score = 0
+        return self.check_sequences(r, c, symbol)
+
+    def evaluate_point_static(self, r, c, symbol):
+        return self.check_sequences(r, c, symbol, is_static=True)
+
+    def check_sequences(self, r, c, symbol, is_static=False):
+        total = 0
         directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
         
         for dr, dc in directions:
-            consecutive = 0   # Số quân liên tiếp
-            open_ends = 0     # Số đầu thoáng (không bị chặn)
+            consecutive = 0
+            if is_static: consecutive = 1
+            blocks = 0
             
-            # Duyệt hướng dương
+            # Check hướng dương
             for i in range(1, 5):
                 pos = (r + dr*i, c + dc*i)
                 val = self.board.get(pos)
                 if val == symbol: consecutive += 1
-                elif val is None: # Gặp ô trống
-                    if 0 <= pos[0] < 15 and 0 <= pos[1] < 15: open_ends += 1
+                elif val is None: break
+                else: 
+                    blocks += 1
                     break
-                else: break # Gặp quân địch -> bị chặn
-
-            # Duyệt hướng âm
+            # Check hướng âm
             for i in range(1, 5):
                 pos = (r - dr*i, c - dc*i)
                 val = self.board.get(pos)
                 if val == symbol: consecutive += 1
-                elif val is None: 
-                    if 0 <= pos[0] < 15 and 0 <= pos[1] < 15: open_ends += 1
+                elif val is None: break
+                else: 
+                    blocks += 1
                     break
-                else: break
-
-            # Bảng điểm (Heuristic Score)
-            if consecutive >= 4: total_score += 1000000 # 5 quân -> Thắng chắc
+            
+            # --- BẢNG ĐIỂM HEURISTIC (ĐÃ NÂNG CẤP) ---
+            # 5 con -> Thắng tuyệt đối
+            if consecutive >= 5: total += 10000000 
+            
+            # 4 con
+            elif consecutive == 4:
+                if blocks == 0: total += 100000 # 4 thoáng -> Thắng ngay
+                else: total += 2500 # 4 bị chặn -> Nguy hiểm cấp cao
+            
+            # 3 con
             elif consecutive == 3:
-                if open_ends == 2: total_score += 50000 # 4 quân thoáng 2 đầu -> Sắp thắng
-                elif open_ends == 1: total_score += 1000 # 4 quân bị chặn 1 đầu
+                if blocks == 0: total += 3000 # 3 thoáng -> Nguy hiểm (Bot phải chặn ngay)
+                else: total += 150 # 3 bị chặn -> Bình thường
+            
+            # 2 con
             elif consecutive == 2:
-                if open_ends == 2: total_score += 500 # 3 quân thoáng
-                elif open_ends == 1: total_score += 100 
-            elif consecutive == 1:
-                if open_ends == 2: total_score += 10
+                if blocks == 0: total += 50
+                else: total += 10
+                
+        return total
 
-        return total_score
+    def check_win_simulation(self, r, c, symbol):
+        directions = [(0, 1), (1, 0), (1, 1), (1, -1)]
+        for dr, dc in directions:
+            count = 1
+            for i in range(1, 5):
+                if self.board.get((r + dr*i, c + dc*i)) == symbol: count += 1
+                else: break
+            for i in range(1, 5):
+                if self.board.get((r - dr*i, c - dc*i)) == symbol: count += 1
+                else: break
+            if count >= 5: return True
+        return False

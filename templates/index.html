@@ -209,6 +209,15 @@
             transition: 0.3s;
             font-weight: bold;
         }
+        /* Hiệu ứng ô vừa đánh: Nền xanh lơ, phát sáng, hơi to lên */
+        .last-move {
+            background-color: #00bcd4 !important; 
+            box-shadow: 0 0 10px #00bcd4;
+            transform: scale(1.1);
+            border: 2px solid white !important;
+            z-index: 10; /* Nổi lên trên */
+            transition: 0.2s;
+        }
     </style>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.6.0/socket.io.min.js"></script>
 </head>
@@ -765,6 +774,15 @@
                     cell.classList.add(val.toLowerCase());
                 }
             });
+
+            // --- ĐOẠN NÀY ĐỂ TÔ MÀU Ô VỪA ĐÁNH ---
+            if (data.last_move) {
+                const [r, c] = data.last_move;
+                const lastCell = document.getElementById(`c-${r}-${c}`);
+                if (lastCell) {
+                    lastCell.classList.add('last-move'); // Thêm class phát sáng
+                }
+            }
 
             // 3. Cập nhật TÊN & GÁN ID CHAT (SỬA LẠI TOÀN BỘ PHẦN NÀY)
             // -----------------------------------------------------------

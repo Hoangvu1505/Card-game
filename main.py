@@ -399,7 +399,8 @@ async def broadcast_caro_state(game):
         
         # --- SỬA DÒNG NÀY ---
         # Gửi nguyên cục data (gồm name và symbol) để Client biết ai là X, ai là O mà gán ID chat
-        'players': {k: v for k, v in game.players.items() if k != 'BOT' or True}
+        'players': {k: v for k, v in game.players.items() if k != 'BOT' or True},
+        'last_move': game.last_move
         # --------------------
     }
     await sio.emit('caro_update', info, room=game.room_id)
