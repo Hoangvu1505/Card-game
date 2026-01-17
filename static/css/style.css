@@ -158,3 +158,145 @@ button:hover { transform: scale(1.05); filter: brightness(1.2); }
     border: 2px solid white !important;
     z-index: 10; transition: 0.2s;
 }
+
+/* --- CSS CHO CHỮ TRÊN VÒNG QUAY --- */
+
+/* Đảm bảo vòng quay là mốc tọa độ */
+#the-wheel {
+    position: relative;
+}
+
+/* Class chung cho các phần tử chứa chữ */
+.wheel-text {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    /* Công thức căn chỉnh vị trí: 
+       1. Xoay một góc để hướng về ô tương ứng (360/7 * i)
+       2. Cộng thêm nửa góc ô để ra giữa ô (360/14)
+       3. Đẩy chữ ra xa tâm (translate 110px)
+       4. Xoay chữ 90 độ để nằm ngang theo hướng đọc
+    */
+    transform: rotate(calc(360deg / 7 * var(--i) + 360deg / 14)) translate(110px) rotate(90deg);
+    z-index: 2; /* Nổi lên trên màu nền */
+}
+
+/* Style cho bản thân dòng chữ */
+.wheel-text span {
+    display: block;
+    transform: translate(-50%, -50%); /* Căn giữa tâm điểm */
+    white-space: nowrap; /* Không xuống dòng */
+    font-weight: bold;
+    font-size: 14px;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.8); /* Thêm bóng đen để dễ đọc trên mọi màu nền */
+}
+#btn-spin-action {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: white;
+    border: 3px solid red;
+    color: red;
+    font-weight: bold;
+    cursor: pointer;
+    z-index: 5;
+
+    /* CĂN GIỮA CHỮ */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    /* fix lệch font */
+    padding: 0;
+    line-height: 1;
+}
+/* POPUP MODAL CHUNG */
+.overlay {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); z-index: 9999;
+    justify-content: center; align-items: center; flex-direction: column;
+}
+.popup-box {
+    background: #2c3e50; padding: 30px; border-radius: 15px; 
+    border: 3px solid #3498db; width: 300px; text-align: center;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5); animation: popIn 0.3s;
+}
+.auth-input {
+    width: 100%; padding: 12px; margin-bottom: 10px; 
+    border-radius: 5px; border: none; font-size: 16px; box-sizing: border-box;
+}
+
+.close-btn {
+    position: absolute; top: 20px; right: 20px; 
+    background: #e74c3c; color: white; border: none; 
+    width: 35px; height: 35px; border-radius: 50%; 
+    font-size: 20px; cursor: pointer; 
+    display: flex; justify-content: center; align-items: center;
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+/* --- SỬA LỖI POPUP ĐĂNG NHẬP & THÔNG BÁO --- */
+
+/* 1. Màn hình nền mờ (Overlay) */
+#auth-overlay, #winner-overlay, #leaderboard-overlay, #wheel-overlay, .overlay {
+    display: none; /* Mặc định ẩn */
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw; /* Full chiều rộng */
+    height: 100vh; /* Full chiều cao */
+    background-color: rgba(0, 0, 0, 0.9) !important; /* Màu đen mờ đậm hơn */
+    z-index: 9999;
+    
+    /* Căn giữa mọi thứ bên trong */
+    display: none; /* Sẽ được JS bật thành flex */
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+/* 2. Cái hộp chứa nội dung (Popup Box) */
+.popup-box, .winner-box {
+    background: #2c3e50 !important; /* Màu nền xanh tối */
+    padding: 30px !important;
+    border-radius: 15px !important;
+    border: 3px solid #3498db !important; /* Viền xanh dương */
+    width: 300px !important; /* Kích thước cố định, không cho tràn */
+    max-width: 90%;
+    text-align: center;
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.2);
+    position: relative;
+    animation: popIn 0.3s forwards;
+}
+
+/* 3. Ô nhập liệu */
+.auth-input {
+    width: 100% !important;
+    padding: 12px !important;
+    margin-bottom: 10px !important;
+    border-radius: 5px !important;
+    border: none !important;
+    font-size: 16px !important;
+    box-sizing: border-box !important; /* Quan trọng: để padding không làm vỡ khung */
+}
+
+/* 4. Tiêu đề */
+.popup-box h2 {
+    color: gold !important;
+    margin-top: 0;
+    text-transform: uppercase;
+}
+
+/* 5. Nút bấm trong popup */
+.popup-box button {
+    width: 100% !important; /* Nút bấm rộng bằng cái hộp */
+    margin: 5px 0 !important;
+    padding: 10px !important;
+}

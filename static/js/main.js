@@ -1,10 +1,25 @@
 const socket = io();
 let currentScreen = 'home';
+let currentUser = null; // Biến lưu người dùng hiện tại
 
+// --- CÁC HÀM CHUNG ---
 function showScreen(id) {
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
     document.getElementById(id).classList.add('active');
     currentScreen = id;
+    // 2. THÊM ĐOẠN NÀY: Xử lý ẩn/hiện nút Đăng nhập
+    const authBtns = document.getElementById('auth-buttons');
+    if (authBtns) {
+        if (id === 'home-screen') {
+            // Chỉ hiện lại nút khi về Sảnh VÀ chưa đăng nhập (currentUser là null)
+            if (!currentUser) {
+                authBtns.style.display = 'flex'; 
+            }
+        } else {
+            // Vào bất kỳ màn hình game/lobby nào thì ẨN luôn cho thoáng
+            authBtns.style.display = 'none';
+        }
+    }
 }
 function goHome() { showScreen('home-screen'); }
 
@@ -21,16 +36,11 @@ function leaveRoom(type) {
         socket.emit('tlmn_action', {act: 'leave'});
         document.getElementById('game-controls').style.display = 'none';
         const startBtn = document.getElementById('btn-start');
-        startBtn.style.display = 'none';
-        startBtn.innerText = "BẮT ĐẦU"; 
+        if(startBtn) startBtn.style.display = 'none';
         document.getElementById('table-center').innerHTML = '';
     } 
-    else if (type === 'caro') {
-        socket.emit('caro_leave'); 
-    }
-    else if (type === 'blackjack') {
-        socket.emit('action', {act: 'leave'}); // Nếu có
-    }
+    else if (type === 'caro') socket.emit('caro_leave'); 
+    else if (type === 'blackjack') socket.emit('action', {act: 'leave'});
     goHome();
 }
 
@@ -48,9 +58,138 @@ function joinRoom(id) {
     socket.emit('join_tlmn', {code: id, name: name});
 }
 
-// --- 1. XỬ LÝ DANH SÁCH PHÒNG ---
+// --- LOGIC KIỂM TRA TRƯỚC KHI CHƠI ---
+function checkLoginAndPlay(gameType) {
+    const nameInput = document.getElementById('username');
+    const name = nameInput.value.trim();
+
+    // 1. Nếu chưa nhập tên -> Bắt nhập
+    if (!name) {
+        alert("Vui lòng nhập tên (Khách) hoặc Đăng nhập để chơi!");
+        nameInput.focus();
+        nameInput.style.border = "2px solid red";
+        setTimeout(() => nameInput.style.border = "none", 2000);
+        return;
+    }
+
+    // 2. Chuyển màn hình
+    if(gameType === 'tienlen') showTLMNMenu();
+    else if(gameType === 'caro') showCaroMenu();
+    else if(gameType === 'blackjack') startBlackjack();
+}
+
+// --- HỆ THỐNG AUTHENTICATION ---
+function openAuthModal(type) {
+    document.getElementById('auth-overlay').style.display = 'flex';
+    const title = document.getElementById('auth-title');
+    const btn = document.getElementById('btn-auth-action');
+    document.getElementById('auth-msg').innerText = "";
+    
+    if (type === 'login') {
+        title.innerText = "ĐĂNG NHẬP";
+        btn.innerText = "ĐĂNG NHẬP";
+        btn.onclick = () => doAuth('auth_login');
+    } else {
+        title.innerText = "ĐĂNG KÝ";
+        btn.innerText = "ĐĂNG KÝ";
+        btn.onclick = () => doAuth('auth_register');
+    }
+}
+
+function closeAuthModal() {
+    document.getElementById('auth-overlay').style.display = 'none';
+}
+
+function doAuth(event) {
+    const u = document.getElementById('auth-user').value.trim();
+    const p = document.getElementById('auth-pass').value.trim();
+    if(!u || !p) {
+        document.getElementById('auth-msg').innerText = "Vui lòng nhập đủ thông tin!";
+        return;
+    }
+    socket.emit(event, {username: u, password: p});
+}
+
+function logout() {
+    currentUser = null;
+    document.getElementById('auth-buttons').style.display = 'block';
+    
+    // --- SỬA ĐOẠN NÀY ---
+    // Thay vì ẩn đi (display = 'none'), ta đưa nó về vị trí cũ và reset số
+    const infoBar = document.getElementById('user-info-bar');
+    infoBar.style.right = '240px'; // Dịch sang trái để nhường chỗ cho nút Đăng nhập
+    
+    document.getElementById('display-username').innerText = "Player";
+    document.getElementById('user-money').innerText = "10,000";
+    document.getElementById('spin-count').innerText = "3";
+    
+    document.getElementById('btn-logout').style.display = 'none'; // Ẩn nút thoát
+    // --------------------
+
+    document.getElementById('lucky-wheel-btn').style.display = 'none';
+    alert("Đã đăng xuất!");
+    goHome();
+}
+
+// NHẬN KẾT QUẢ AUTH TỪ SERVER
+socket.on('auth_response', (data) => {
+    if (data.success) {
+        closeAuthModal();
+        currentUser = data.username;
+        
+        // 1. Ẩn nút đăng nhập, Hiện thanh thông tin
+        document.getElementById('auth-buttons').style.display = 'none';
+        document.getElementById('user-info-bar').style.display = 'flex';
+        
+        // 2. Cập nhật tên lên thanh thông tin
+        const displayUser = document.getElementById('display-username');
+        if(displayUser) displayUser.innerText = currentUser;
+        
+        // 3. ĐIỀN TÊN VÀO Ô GIỮA MÀN HÌNH VÀ KHÓA LẠI (FIX LỖI CỦA BẠN TẠI ĐÂY)
+        const nameInput = document.getElementById('username');
+        if (nameInput) {
+            nameInput.value = currentUser;
+            nameInput.readOnly = true; // Khóa không cho sửa
+            nameInput.style.background = "#ddd"; // Màu xám
+        }
+        
+        // 4. Lấy tiền ngay lập tức
+        socket.emit('get_my_money', {name: currentUser});
+
+    } else {
+        document.getElementById('auth-msg').innerText = data.msg;
+    }
+});
+
+// --- TIỀN & BXH ---
+// Tự động cập nhật tiền khi nhập tên (cho khách)
+const nameInput = document.getElementById('username');
+if(nameInput) {
+    nameInput.addEventListener('change', () => {
+        if(nameInput.value.trim()) {
+            socket.emit('get_my_money', {name: nameInput.value});
+        }
+    });
+}
+
+// Nhận dữ liệu tiền từ server về
+socket.on('money_update', (data) => {
+    // Tìm thẻ hiển thị tiền
+    const moneyEl = document.getElementById('user-money');
+    const spinEl = document.getElementById('spin-count');
+
+    // Cập nhật text và format số (ví dụ: 10000 -> 10,000)
+    if(data.money !== undefined && moneyEl) {
+        moneyEl.innerText = data.money.toLocaleString();
+    }
+    if(data.spins !== undefined && spinEl) {
+        spinEl.innerText = data.spins;
+    }
+});
+
+// --- CÁC LOGIC KHÁC (ROOM, CHAT, GAME) GIỮ NGUYÊN ---
+
 socket.on('room_list_update', (rooms) => {
-    // Danh sách Tiến Lên
     const tlmnList = document.getElementById('room-list');
     if (tlmnList) {
         const tlmnRooms = rooms.filter(r => !r.id.startsWith('C-'));
@@ -61,7 +200,6 @@ socket.on('room_list_update', (rooms) => {
                 <span>${r.players} - ${r.host}</span>
             </div>`).join('');
     }
-    // Danh sách Caro
     const caroList = document.getElementById('caro-room-list');
     if (caroList) {
         const caroRooms = rooms.filter(r => r.id.startsWith('C-'));
@@ -74,14 +212,12 @@ socket.on('room_list_update', (rooms) => {
     }
 });
 
-// --- ĐIỀU HƯỚNG PHÒNG ---
 socket.on('room_joined', (data) => {
     if(data.game_type === 'tienlen') {
         showScreen('tlmn-game');
         document.getElementById('rid-display').innerText = "Phòng: " + data.room_id;
         const startBtn = document.getElementById('btn-start');
-        startBtn.style.display = 'none'; 
-        startBtn.innerText = 'BẮT ĐẦU';
+        if(startBtn) startBtn.style.display = 'none'; 
     } else if (data.game_type === 'caro') {
         showScreen('caro-game');
         document.getElementById('caro-rid').innerText = data.room_id;
@@ -89,7 +225,6 @@ socket.on('room_joined', (data) => {
     }
 });
 
-// --- CHAT SYSTEM CHUNG ---
 function toggleChatPopup() {
     const popup = document.getElementById('chat-popup');
     popup.style.display = (popup.style.display === 'grid') ? 'none' : 'grid';
@@ -120,7 +255,6 @@ socket.on('chat_received', (data) => {
     }
 });
 
-// --- BLACKJACK LOGIC ---
 function startBlackjack() {
     showScreen('blackjack-game');
     document.getElementById('bj-dealer-cards').innerHTML = "";
@@ -154,3 +288,58 @@ socket.on('game_over', (data) => {
 });
 socket.on('force_leave', (data) => { alert(data.msg); goHome(); });
 socket.on('error', (data) => alert(data.msg));
+
+function showLeaderboard() {
+    socket.emit('get_leaderboard');
+    document.getElementById('leaderboard-overlay').style.display = 'flex';
+}
+
+socket.on('leaderboard_data', (data) => {
+    const list = document.getElementById('leaderboard-list');
+    list.innerHTML = "";
+    data.forEach((user, index) => {
+        let icon = "👤";
+        if (index === 0) icon = "🥇";
+        if (index === 1) icon = "🥈";
+        if (index === 2) icon = "🥉";
+        list.innerHTML += `<div style="display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #555; font-size: 16px;"><span>${icon} <b>${user[0]}</b></span><span style="color: gold;">${user[1].toLocaleString()} $</span></div>`;
+    });
+});
+
+function showWheel() {
+    document.getElementById('wheel-overlay').style.display = 'flex';
+    const wheel = document.getElementById('the-wheel');
+    wheel.style.transition = 'none';
+    wheel.style.transform = 'rotate(0deg)';
+}
+
+function spinNow() {
+    const name = document.getElementById('username').value;
+    // Kiểm tra xem đã đăng nhập chưa
+    if (!name) {
+        alert("Vui lòng đăng nhập để quay!");
+        return;
+    }
+    
+    const btn = document.getElementById('btn-spin-action');
+    btn.disabled = true; 
+    socket.emit('spin_wheel', {'name': name});
+}
+
+socket.on('spin_result', (data) => {
+    const wheel = document.getElementById('the-wheel');
+    const prizeIndex = data.index; 
+    const segments = 7; 
+    const segmentAngle = 360 / segments;
+    const rotateAmount = (360 * 5) - (prizeIndex * segmentAngle) - (segmentAngle / 2);
+
+    wheel.style.transition = 'transform 4s cubic-bezier(0.25, 0.1, 0.25, 1)';
+    wheel.style.transform = `rotate(${rotateAmount}deg)`;
+
+    setTimeout(() => {
+        alert(`🎉 BẠN NHẬN ĐƯỢC: ${data.prize.label}`);
+        document.getElementById('user-money').innerText = data.new_money.toLocaleString();
+        document.getElementById('spin-count').innerText = data.remaining_spins;
+        document.getElementById('btn-spin-action').disabled = false;
+    }, 4000);
+});

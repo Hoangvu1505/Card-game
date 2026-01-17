@@ -1,10 +1,12 @@
 # server_config.py
 import socketio
 from room_manager import RoomManager
+from user_manager import UserManager
 
 # 1. Khởi tạo Server Socket.IO
 sio = socketio.AsyncServer(async_mode='asgi', cors_allowed_origins='*')
 manager = RoomManager()
+user_manager = UserManager() # <--- Khởi tạo biến dùng chung
 sid_to_room = {} # Map: sid -> room_id
 
 # 2. Hàm dùng chung: Gửi danh sách phòng
