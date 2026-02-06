@@ -1,4 +1,7 @@
-function showCaroMenu() { showScreen('caro-lobby'); }
+function showCaroMenu() { 
+    showScreen('caro-lobby'); 
+    reloadRooms();
+}
 
 function createCaro(mode) {
     const name = document.getElementById('username').value;

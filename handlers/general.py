@@ -2,6 +2,7 @@
 import random
 from server_config import sio, manager, sid_to_room, broadcast_room_list, user_manager
 from games.tienlen import TienLenGame
+from games.caro import CaroGame
 
 # Cấu hình giải thưởng
 PRIZES = [
@@ -47,17 +48,34 @@ async def connect(sid, environ):
 async def disconnect(sid):
     if sid in sid_to_room:
         room_id = sid_to_room[sid]
-        status = manager.remove_player(sid, room_id)
+        status, name = manager.remove_player(sid, room_id)
+        
+        # 1. TRƯỜNG HỢP PHÒNG BỊ HỦY (Chủ thoát hoặc hết người)
         if status == "DESTROYED":
-            await sio.emit('force_leave', {'msg': 'Phòng đã giải tán.'}, room=room_id)
+            # Quan trọng: Kiểm tra room_id có tồn tại không để tránh gửi global
+            if room_id: 
+                await sio.emit('force_leave', {'msg': 'Chủ phòng đã rời đi. Phòng giải tán!'}, room=room_id)
             await broadcast_room_list()
+            
+        # 2. TRƯỜNG HỢP KHÁCH THOÁT (Cần cập nhật lại giao diện cho người ở lại)
         elif status == "LEFT":
             if room_id in manager.rooms:
                 game = manager.rooms[room_id]
+                
+                # --- FIX LỖI NGƯỜI THOÁT VẪN HIỆN Ở ĐÂY ---
                 if isinstance(game, TienLenGame):
                     from handlers.tienlen import broadcast_tlmn_state
                     await broadcast_tlmn_state(game)
-            await broadcast_room_list()
+                    await sio.emit('error', {'msg': f'Người chơi {name} đã thoát!'}, room=room_id)
+                elif isinstance(game, CaroGame):
+                    from handlers.caro import broadcast_caro_state
+                    await broadcast_caro_state(game)
+                    await sio.emit('error', {'msg': f'Người chơi {name} đã thoát!'}, room=room_id)
+                # -------------------------------------------
+            
+            await broadcast_room_list() # Cập nhật danh sách phòng bên ngoài (số người giảm)
+            
+
         if sid in sid_to_room: del sid_to_room[sid]
 
 @sio.event
@@ -99,3 +117,8 @@ async def spin_wheel(sid, data):
         'index': result_index, 'prize': result_prize,
         'new_money': new_money, 'remaining_spins': remaining
     }, room=sid)
+
+@sio.event
+async def get_room_list(sid):
+    # Gửi ngay danh sách phòng cho người vừa yêu cầu
+    await sio.emit('room_list_update', manager.get_public_rooms(), room=sid)

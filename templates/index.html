@@ -117,7 +117,7 @@
 
     <div id="tlmn-lobby" class="screen">
         <button class="btn-back" onclick="goHome()">⬅ Quay lại</button>
-        <h2>Sảnh Tiến Lên</h2>
+        <h2>Tiến Lên</h2>
         <div style="display: flex; justify-content: center; gap: 20px;">
             <div style="width: 300px; border-right: 1px solid #555; padding-right: 20px;">
                 <h3>Chơi Nhanh</h3>
@@ -128,8 +128,14 @@
                 <input type="text" id="room-code-input" placeholder="Mã phòng" style="width: 100px; padding: 8px;">
                 <button class="btn-join" onclick="joinByCode()">Vào</button>
             </div>
+            
+            
+
             <div style="width: 400px;">
-                <h3>Danh sách phòng online</h3>
+                <h3 style="display: flex; justify-content: space-between; align-items: center;">
+                    Danh sách phòng 
+                    <button onclick="reloadRooms()" style="padding: 5px 10px; font-size: 14px; background: #3498db;">🔄</button>
+                </h3>
                 <div id="room-list">Đang tải...</div>
             </div>
         </div>
@@ -153,11 +159,11 @@
             </div>
 
             <div style="width: 400px;">
-                <h3>Danh sách phòng</h3>
-                <div id="caro-room-list">
-                    <p style="opacity: 0.7;">(Chức năng danh sách đang cập nhật...)</p>
-                    <p>Hãy dùng "Mã phòng" để mời bạn bè.</p>
-                </div>
+                <h3 style="display: flex; justify-content: space-between; align-items: center;">
+                    Danh sách phòng
+                    <button onclick="reloadRooms()" style="padding: 5px 10px; font-size: 14px; background: #3498db;">🔄</button>
+                </h3>
+                <div id="caro-room-list">...</div>
             </div>
         </div>
     </div>

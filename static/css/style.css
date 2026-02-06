@@ -125,7 +125,7 @@ button:hover { transform: scale(1.05); filter: brightness(1.2); }
 
 /* ĐỊNH VỊ NÚT BẤM TRÊN BÀN */
 #game-controls, #btn-start {
-    position: absolute; bottom: 80px; left: 50%; transform: translateX(-50%);
+    position: absolute; bottom: 250px; left: 50%; transform: translateX(-50%);
     z-index: 50; display: flex; gap: 10px;
 }
 #btn-start {
@@ -299,4 +299,59 @@ button:hover { transform: scale(1.05); filter: brightness(1.2); }
     width: 100% !important; /* Nút bấm rộng bằng cái hộp */
     margin: 5px 0 !important;
     padding: 10px !important;
+}
+/* --- THÔNG BÁO NỔI (FLOATING NOTIFY) --- */
+.game-notify {
+    position: fixed;
+    top: 40%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0, 0, 0, 0.85); /* Nền đen mờ */
+    color: #fff;
+    padding: 15px 30px;
+    border-radius: 50px;
+    font-size: 24px;
+    font-weight: bold;
+    z-index: 99999;
+    pointer-events: none; /* Cho phép bấm xuyên qua */
+    border: 2px solid gold;
+    text-shadow: 0 0 5px black;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+    white-space: nowrap;
+    
+    /* Hiệu ứng hoạt hình */
+    animation: floatUp 2.5s ease-out forwards;
+}
+
+.notify-error {
+    border-color: #e74c3c; /* Màu đỏ nếu là lỗi/bị phạt */
+    color: #e74c3c;
+    background: rgba(50, 0, 0, 0.9);
+}
+
+.notify-money {
+    border-color: #2ecc71; /* Màu xanh nếu nhận tiền */
+    color: #2ecc71;
+}
+
+@keyframes floatUp {
+    0% {
+        opacity: 0;
+        transform: translate(-50%, 0) scale(0.5);
+    }
+    10% {
+        opacity: 1;
+        transform: translate(-50%, -20px) scale(1.1);
+    }
+    20% {
+        transform: translate(-50%, -20px) scale(1);
+    }
+    80% {
+        opacity: 1;
+        transform: translate(-50%, -50px);
+    }
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -100px);
+    }
 }

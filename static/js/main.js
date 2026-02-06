@@ -185,6 +185,9 @@ socket.on('money_update', (data) => {
     if(data.spins !== undefined && spinEl) {
         spinEl.innerText = data.spins;
     }
+    if(currentScreen === 'tlmn-game' || currentScreen === 'caro-game') {
+        showNotify(`💰 Số dư mới: ${data.money.toLocaleString()}$`, 'money');
+    }
 });
 
 // --- CÁC LOGIC KHÁC (ROOM, CHAT, GAME) GIỮ NGUYÊN ---
@@ -287,7 +290,10 @@ socket.on('game_over', (data) => {
     setTimeout(() => alert(`KẾT QUẢ: ${data.result}`), 200);
 });
 socket.on('force_leave', (data) => { alert(data.msg); goHome(); });
-socket.on('error', (data) => alert(data.msg));
+socket.on('error', (data) => {
+    // Gọi hàm thông báo nổi thay vì alert
+    showNotify(data.msg, 'error');
+});
 
 function showLeaderboard() {
     socket.emit('get_leaderboard');
@@ -343,3 +349,35 @@ socket.on('spin_result', (data) => {
         document.getElementById('btn-spin-action').disabled = false;
     }, 4000);
 });
+function reloadRooms() {
+    socket.emit('get_room_list'); // Gửi yêu cầu lên server
+    // Hiển thị hiệu ứng đang tải giả lập
+    const list1 = document.getElementById('room-list');
+    const list2 = document.getElementById('caro-room-list');
+    if(list1) list1.innerHTML = '<div style="color: yellow;">Đang làm mới...</div>';
+    if(list2) list2.innerHTML = '<div style="color: yellow;">Đang làm mới...</div>';
+}
+// --- HÀM HIỂN THỊ THÔNG BÁO BAY ---
+function showNotify(msg, type = 'normal') {
+    // 1. Tạo thẻ div
+    const div = document.createElement('div');
+    div.className = 'game-notify';
+    
+    // 2. Thêm class màu sắc tùy loại
+    if (type === 'error' || msg.includes('lỗi') || msg.includes('bị')) {
+        div.classList.add('notify-error');
+    } else if (type === 'money' || msg.includes('+')) {
+        div.classList.add('notify-money');
+    }
+    
+    // 3. Gán nội dung
+    div.innerHTML = msg;
+    
+    // 4. Gắn vào body
+    document.body.appendChild(div);
+    
+    // 5. Tự động xóa sau 2.5 giây (khớp với animation css)
+    setTimeout(() => {
+        div.remove();
+    }, 2500);
+}

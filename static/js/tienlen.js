@@ -1,4 +1,7 @@
-function showTLMNMenu() { showScreen('tlmn-lobby'); }
+function showTLMNMenu() {
+    showScreen('tlmn-lobby');
+    reloadRooms();
+ }
 
 function createTLMN(mode) {
     const name = document.getElementById('username').value;

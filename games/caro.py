@@ -59,12 +59,12 @@ class CaroGame:
         return False
 
     def reset_game(self):
-        self.board = {}
+        """Đưa game về trạng thái chờ, xóa bàn cờ"""
+        self.state = "WAITING"
+        self.board = {}      # Xóa bàn cờ
+        self.turn = 'X'      # Reset lượt về X
         self.winner = None
-        self.turn = 'X'
-        self.state = 'PLAYING'
         self.last_move = None
-        return True
 
     # ----------------------------------------------------------------
     # --- BOT LOGIC: DEFENSIVE & AGGRESSIVE ---
